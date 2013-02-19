@@ -32,3 +32,6 @@ then use it with
         DirectoryIndex index.fcgi
         Order allow,deny
         Allow from all
+
+# Live web version
+http://unpy.net/anagram/
