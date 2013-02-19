@@ -61,7 +61,9 @@ size_t total_matches;
 void recurse(worddata &left,
         vector<worddata *>::const_iterator start, vector<worddata *>::const_iterator end,
         vector<worddata *> &stack,
-        vector<size_t>::iterator lstart, vector<size_t>::iterator lend)
+        vector<size_t>::iterator lstart, vector<size_t>::iterator lend,
+        vector< std::vector<worddata *> >::iterator state,
+        vector< std::vector<worddata *> >::iterator stend)
 {
     if(!left)
     {
@@ -72,7 +74,8 @@ void recurse(worddata &left,
         }
         return;
     }
-    vector<worddata *> newcandidates;
+    vector<worddata *> &newcandidates = *state;
+    newcandidates.clear();
     copy_if(start, end, back_inserter(newcandidates),
             filterer(left));
     for(vector<worddata *>::const_iterator it = newcandidates.begin();
@@ -82,12 +85,12 @@ void recurse(worddata &left,
         if(lstart == lend)
         {
             worddata newleft = left - **it;
-            recurse(newleft, it, newcandidates.end(), stack, lstart, lend);
+            recurse(newleft, it, newcandidates.end(), stack, lstart, lend, state+1, stend);
         }
         else if(lcnt(**it) == *lstart) 
         {
             worddata newleft = left - **it;
-            recurse(newleft, newcandidates.begin(), newcandidates.end(), stack, lstart+1, lend);
+            recurse(newleft, newcandidates.begin(), newcandidates.end(), stack, lstart+1, lend, state+1, stend);
         }
         stack.pop_back();
     }
@@ -188,7 +191,10 @@ int main(int argc, char **argv)
     for(vector<worddata>::iterator it = reqd.begin(); it != reqd.end(); it++)
         stack.push_back(&*it);
 
-    recurse(ww, pwords.begin(), pwords.end(), stack, lengths.begin(), lengths.end());
+    std::vector< std::vector<worddata *> > st;
+    st.resize(lcnt(ww));
+
+    recurse(ww, pwords.begin(), pwords.end(), stack, lengths.begin(), lengths.end(), st.begin(), st.end());
 
     cerr << "# " << total_matches << " matches in " << setprecision(2) << cputime() << "s\n";
 
