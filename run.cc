@@ -218,6 +218,7 @@ void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_max
                 }
             case '-':
                 {
+                    (void) i.get();
                     i >> maxcount;
                     maxcount = min(def_maxcount, maxcount);
                     break;
