@@ -158,7 +158,7 @@ struct dict {
         byinvwordlen(const dict &d) : d(d) {}
         bool operator()(size_t a, size_t b) const {
             return lcnt(*reinterpret_cast<const worddata*>(&d.wdata[a]))
-                < lcnt(*reinterpret_cast<const worddata*>(&d.wdata[b]));
+                > lcnt(*reinterpret_cast<const worddata*>(&d.wdata[b]));
         }
         const dict &d;
     };
