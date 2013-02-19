@@ -56,7 +56,7 @@ struct filterer
     const worddata &a;
 };
 
-size_t total_matches;
+size_t total_matches, max_matches;
 
 void recurse(worddata &left,
         vector<worddata *>::const_iterator start, vector<worddata *>::const_iterator end,
@@ -65,12 +65,15 @@ void recurse(worddata &left,
         vector< std::vector<worddata *> >::iterator state,
         vector< std::vector<worddata *> >::iterator stend)
 {
+    if(total_matches == max_matches) return;
     if(!left)
     {
         if(!stack.empty())
         {
             total_matches ++;
             print_stack(stack);
+            if(total_matches == max_matches) 
+                cout << "# Reached maximum permitted matches\n";
         }
         return;
     }
@@ -119,10 +122,10 @@ double cputime()
 }
 
 
-int run(dict &d, bool apos, size_t minlen, size_t maxlen, std::vector<size_t> &lengths, std::string &aw, std::string &rw) {
+int run(dict &d, bool apos, size_t minlen, size_t maxlen, size_t maxcount, std::vector<size_t> &lengths, std::string &aw, std::string &rw) {
     double t0 = cputime();
     total_matches = 0;
-
+    max_matches = maxcount;
     if(!lengths.empty())
     {
         minlen = min(minlen, *min_element(lengths.begin(), lengths.end()));
@@ -163,13 +166,14 @@ int run(dict &d, bool apos, size_t minlen, size_t maxlen, std::vector<size_t> &l
     return 0;
 }
 
-void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_maxlen) {
+void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
     std::string an;
     std::string reqd;
     
     bool apos = def_apos;
     size_t minlen = def_minlen;
     size_t maxlen = def_maxlen;
+    size_t maxcount = def_maxcount;
     std::vector<size_t> lengths;
     std::string aw, rw;
 
@@ -179,10 +183,11 @@ void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_max
         switch(c) {
             case '\n':
                 (void) i.get();
-                run(d, apos, minlen, maxlen, lengths, aw, rw);
+                run(d, apos, minlen, maxlen, maxcount, lengths, aw, rw);
                 apos = def_apos;
                 minlen = def_minlen;
                 maxlen = def_maxlen;
+                maxcount = def_maxcount;
                 lengths.clear();
                 aw.clear();
                 rw.clear();
@@ -211,6 +216,15 @@ void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_max
                     else rw = s;
                     break;
                 }
+            case '-':
+                {
+                    i >> maxcount;
+                    maxcount = min(def_maxcount, maxcount);
+                    break;
+                }
+            case '\'':
+                apos = !apos;
+                break;
             case '?':
                 (void) i.get();
                 break;
@@ -234,7 +248,7 @@ int main(int argc, char **argv)
 {
     const char *dictpath=0, *defdict="/usr/share/dict/words", *bindict=0;
     int opt;
-    size_t minlen=3, maxlen=11;
+    size_t minlen=3, maxlen=11, maxcount=1000;
     bool apos=false, server=false;
     vector<size_t> lengths;
     string aw;
@@ -244,6 +258,7 @@ int main(int argc, char **argv)
         switch(opt)
         {
             case 'a': apos = !apos; break;
+            case 'L': maxcount = atoi(optarg); break;
             case 'D': bindict = optarg; break;
             case 'd': dictpath = optarg; break;
             case 'M': maxlen = atoi(optarg); break;
@@ -269,7 +284,7 @@ int main(int argc, char **argv)
     }
 
     if(server) {
-        serve(cin, d, apos, minlen, maxlen);
+        serve(cin, d, apos, minlen, maxlen, maxcount);
         return 0;
     } else {
         std::string rw;
@@ -278,6 +293,6 @@ int main(int argc, char **argv)
             if(rw.empty()) rw = i;
             else rw = rw + " " + argv[i];
         }
-        return run(d, apos, minlen, maxlen, lengths, aw, rw);
+        return run(d, apos, minlen, maxlen, maxcount, lengths, aw, rw);
     }
 }
