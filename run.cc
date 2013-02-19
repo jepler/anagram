@@ -279,8 +279,8 @@ void recurse(worddata &left,
         vector<worddata *>::const_iterator start, vector<worddata *>::const_iterator end,
         vector<worddata *> &stack,
         vector<size_t>::iterator lstart, vector<size_t>::iterator lend,
-        vector< std::vector<worddata *> >::iterator state,
-        vector< std::vector<worddata *> >::iterator stend)
+        vector< vector<worddata *> >::iterator state,
+        vector< vector<worddata *> >::iterator stend)
 {
     if(total_matches == max_matches) return;
     if(!left)
@@ -339,7 +339,7 @@ double cputime()
 }
 
 
-int run(dict &d, bool apos, size_t minlen, size_t maxlen, size_t maxcount, std::vector<size_t> &lengths, std::string &aw, std::string &rw) {
+int run(dict &d, bool apos, size_t minlen, size_t maxlen, size_t maxcount, vector<size_t> &lengths, string &aw, string &rw) {
     double t0 = cputime();
     total_matches = 0;
     max_matches = maxcount;
@@ -373,7 +373,7 @@ int run(dict &d, bool apos, size_t minlen, size_t maxlen, size_t maxcount, std::
         stack.push_back(reqd.w);
     }
 
-    std::vector< std::vector<worddata *> > st;
+    vector< vector<worddata *> > st;
     st.resize(lcnt(ww.value()));
 
     recurse(ww.value(), pwords.begin(), pwords.end(), stack, lengths.begin(), lengths.end(), st.begin(), st.end());
@@ -384,15 +384,15 @@ int run(dict &d, bool apos, size_t minlen, size_t maxlen, size_t maxcount, std::
 }
 
 void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
-    std::string an;
-    std::string reqd;
+    string an;
+    string reqd;
     
     bool apos = def_apos;
     size_t minlen = def_minlen;
     size_t maxlen = def_maxlen;
     size_t maxcount = def_maxcount;
-    std::vector<size_t> lengths;
-    std::string aw, rw;
+    vector<size_t> lengths;
+    string aw, rw;
 
     int c;
     while((c = i.peek()) != EOF)
@@ -426,7 +426,7 @@ void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_max
                 }
             case '+': case '=':
                 {
-                    std::string s;
+                    string s;
                     (void) i.get();
                     i >> s;
                     if(!rw.empty()) rw = rw + " " + s;
@@ -453,7 +453,7 @@ void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_max
                         (void) i.get();
                         break;
                     }
-                    std::string s;
+                    string s;
                     i >> s;
                     if(!aw.empty()) aw = aw + " " + s;
                     else aw = s;
@@ -506,7 +506,7 @@ int main(int argc, char **argv)
         serve(cin, d, apos, minlen, maxlen, maxcount);
         return 0;
     } else {
-        std::string rw;
+        string rw;
         for(int i=optind; i<argc; i++)
         {
             if(rw.empty()) rw = i;
