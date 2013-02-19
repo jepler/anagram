@@ -1,22 +1,22 @@
 # Build instructions:
 
-        make
+    make
 
 # General running:
 
-        ./ana terms...
-        ./ana -? # for help
+    ./ana terms...
+    ./ana -? # for help
 
 # Binary dictionaries
 These start a bit faster than reading the system dictionary.
 
 Build one with
 
-        ./ana -D dict.bin -d /usr/share/dict/words
+    ./ana -D dict.bin -d /usr/share/dict/words
 
 then use it with
 
-        ./ana -D dict.bin terms...
+    ./ana -D dict.bin terms...
 
 # Web app installation instructions
  1.    build a binary dictionary:
