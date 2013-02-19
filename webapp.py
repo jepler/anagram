@@ -63,6 +63,8 @@ def anagram_app(environ, start_response):
     yield "<dt>n <dd> choose a word with exactly n letters\n"
     yield "<dt>-n <dd> display at most n results (limit 1000)\n"
     yield "</dl>"
+    yield "<p>Source (web app and unix commandline program) on"
+    yield " <a href='https://github.com/jepler/anagram'>github</a></p>"
     yield "</div>"
         
     yield "<h1>Array unravels germs</h1>"
