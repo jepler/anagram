@@ -27,14 +27,37 @@ def anagram_app(environ, start_response):
     status = '200 OK' # HTTP Status
 
     pi = environ['QUERY_STRING']
-    if pi: pi = cgi.parse_qs(pi).get('q', [])[0]
+    if pi: pi = cgi.parse_qs(pi).get('q', [''])[0]
+
+    headers = [('Content-type', 'text/html')] # HTTP Headers
+    start_response(status, headers)
+
+    yield "<html><head><title>Surly anagram server</title></head>"
+
+    yield "<div style='float:right'>"
+    yield "<p>Cheatsheet:</p>"
+    yield "<dl>"
+    yield "<dt>letters... <dd> Letters available to anagram\n"
+    yield "<dt>=word <dd> word must be in result\n"
+    yield "<dt>&gt;n <dd> words must contain at least n letters\n"
+    yield "<dt>&lt;n <dd> words must contain at most n letters\n"
+    yield "<dt>' <dd> words with apostrophes are considered\n"
+    yield "<dt>n <dd> choose a word with exactly n letters\n"
+    yield "<dt>-n <dd> display at most n results (limit 1000)\n"
+    yield "</dl>"
+    yield "</div>"
+        
+    yield "<h1>Array unravels germs</h1>"
+    yield "<body><form><input type='text' id='query' name='q' value=\"%s\">" % cgi.escape(pi, True)
+    yield "<input type='submit' value='anagram'>"
+    yield "<script>document.getElementById('query').focus()</script>"
+    yield "</form>"
 
     if pi:
-        headers = [('Content-type', 'text/plain')] # HTTP Headers
-        start_response(status, headers)
-
+        pi = pi.replace('\n', ' ')
         pipe = get_pipe_for_thread()
 
+        yield "<pre>"
         yield "# Query: " + repr(pi) + "\n"
 
         pipe.stdin.write(pi + "\n"); pipe.stdin.flush()
@@ -42,25 +65,10 @@ def anagram_app(environ, start_response):
             line = pipe.stdout.readline()
             if not line.strip():
                     break
-            yield line
-    else:
-        headers = [('Content-type', 'text/html')] # HTTP Headers
-        start_response(status, headers)
-        yield "<html><head><title>Surly anagram server</title></head>"
-        yield "<body><form><input type='text' name='q'>"
-        yield "<input type='submit' value='anagram'>"
-        yield "</form>"
-        yield "<p>Cheatsheet:</p>"
-        yield "<dl>"
-        yield "<dt>letters... <dd> Letters available to anagram\n"
-        yield "<dt>=word <dd> word must be in result\n"
-        yield "<dt>&gt;n <dd> words must contain at least n letters\n"
-        yield "<dt>&lt;n <dd> words must contain at most n letters\n"
-        yield "<dt>' <dd> words with apostrophes are considered\n"
-        yield "<dt>n <dd> choose a word with exactly n letters\n"
-        yield "<dt>-n <dd> display at most n results (limit <dd> 1000)\n"
-        yield "</dl></body></html>"
-        
+            yield cgi.escape(line)
+        yield "</pre> "
+
+    yield "</body></html>"
 
 from flup.server.fcgi import WSGIServer
 WSGIServer(anagram_app).run()
