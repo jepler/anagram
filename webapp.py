@@ -45,39 +45,49 @@ def anagram_app(environ, start_response):
     status = '200 OK' # HTTP Status
 
     pi = environ['QUERY_STRING']
-    if pi: pi = cgi.parse_qs(pi).get('q', [''])[0]
+    pi = cgi.parse_qs(pi)
+    plain = pi.get('p', False)
+    if pi:
+        pi = pi.get('q', [''])[-1]
+    else:
+        pi = ''
 
-    headers = [('Content-type', 'text/html')] # HTTP Headers
+    if plain:
+        headers = [('Content-type', 'text/plain')] # HTTP Headers
+    else:
+        headers = [('Content-type', 'text/html')] # HTTP Headers
     start_response(status, headers)
 
-    yield "<html><head><title>Surly anagram server</title></head>"
+    if not plain:
+        yield "<html><head><title>Surly anagram server</title></head>"
 
-    yield "<div style='float:right'>"
-    yield "<p>Cheatsheet:</p>"
-    yield "<dl>"
-    yield "<dt>letters... <dd> Letters available to anagram\n"
-    yield "<dt>=word <dd> word must be in result\n"
-    yield "<dt>&gt;n <dd> words must contain at least n letters\n"
-    yield "<dt>&lt;n <dd> words must contain at most n letters\n"
-    yield "<dt>' <dd> words with apostrophes are considered\n"
-    yield "<dt>n <dd> choose a word with exactly n letters\n"
-    yield "<dt>-n <dd> display at most n results (limit 1000)\n"
-    yield "</dl>"
-    yield "<p>Source (web app and unix commandline program) on"
-    yield " <a href='https://github.com/jepler/anagram'>github</a></p>"
-    yield "</div>"
-        
-    yield "<h1>Array unravels germs</h1>"
-    yield "<body><form><input type='text' id='query' name='q' value=\"%s\">" % cgi.escape(pi, True)
-    yield "<input type='submit' value='anagram'>"
-    yield "<script>document.getElementById('query').focus()</script>"
-    yield "</form>"
+        yield "<body>"
+        yield "<div style='float:right'>"
+        yield "<p>Cheatsheet:</p>"
+        yield "<dl>"
+        yield "<dt>letters... <dd> Letters available to anagram\n"
+        yield "<dt>=word <dd> word must be in result\n"
+        yield "<dt>&gt;n <dd> words must contain at least n letters\n"
+        yield "<dt>&lt;n <dd> words must contain at most n letters\n"
+        yield "<dt>' <dd> words with apostrophes are considered\n"
+        yield "<dt>n <dd> choose a word with exactly n letters\n"
+        yield "<dt>-n <dd> display at most n results (limit 1000)\n"
+        yield "</dl>"
+        yield "<p>Source (web app and unix commandline program) on"
+        yield " <a href='https://github.com/jepler/anagram'>github</a></p>"
+        yield "</div>"
+            
+        yield "<h1>Array unravels germs</h1>"
+        yield "<form><input type='text' id='query' name='q' value=\"%s\">" % cgi.escape(pi, True)
+        yield "<input type='submit' value='anagram'>"
+        yield "<script>document.getElementById('query').focus()</script>"
+        yield "</form>"
+        yield "<pre id='results'>"
 
     if pi:
         pi = pi.replace('\n', ' ')
         pipe = get_pipe_for_thread()
 
-        yield "<pre>"
         yield "# Query: " + repr(pi) + "\n"
 
         pipe.stdin.write(pi + "\n"); pipe.stdin.flush()
@@ -86,9 +96,13 @@ def anagram_app(environ, start_response):
             if not line.strip():
                     break
             yield cgi.escape(line)
-        yield "</pre> "
 
-    yield "</body></html>"
+    if not plain:
+        yield "</pre>"
+        yield '<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>'
+        yield '<script src="anagram.js"></script>'
+
+        yield "</body></html>"
 
 from flup.server.fcgi import WSGIServer
 WSGIServer(anagram_app).run()
