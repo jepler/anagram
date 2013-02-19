@@ -118,42 +118,10 @@ double cputime()
         + (u.ru_stime.tv_sec + u.ru_stime.tv_usec * 1e-6);
 }
 
-int main(int argc, char **argv)
-{
-    const char *dictpath=0, *defdict="/usr/share/dict/words", *bindict=0;
-    int opt;
-    size_t minlen=3, maxlen=11;
-    bool apos=false;
-    vector<size_t> lengths;
-    string aw;
 
-    while((opt = getopt(argc, argv, "-aD:d:M:m:l:")) != -1)
-    {
-        switch(opt)
-        {
-            case 'a': apos = !apos; break;
-            case 'D': bindict = optarg; break;
-            case 'd': dictpath = optarg; break;
-            case 'M': maxlen = atoi(optarg); break;
-            case 'm': minlen = atoi(optarg); break;
-            case 'l': lengths = parse_lengths(optarg); break;
-            case 1: aw += optarg; break;
-            default:  usage(argv[0]);
-        }
-    }
-
-    dict d;
-    if(bindict && dictpath) {
-        d.readdict(dictpath);
-        d.serialize(bindict);
-        cerr << "# Read and serialized " << d.nwords() << " candidate words in " << setprecision(2) << cputime() << "s\n";
-    } else if(bindict) {
-        d.deserialize(bindict);
-        cerr << "# Deserialized " << d.nwords() << " candidate words in " << setprecision(2) << cputime() << "s\n";
-    } else {
-        d.readdict(dictpath ? dictpath : defdict);
-        cerr << "# Read " << d.nwords() << " candidate words in " << setprecision(2) << cputime() << "s\n";
-    }
+int run(dict &d, bool apos, size_t minlen, size_t maxlen, std::vector<size_t> &lengths, std::string &aw, std::string &rw) {
+    double t0 = cputime();
+    total_matches = 0;
 
     if(!lengths.empty())
     {
@@ -171,7 +139,6 @@ int main(int argc, char **argv)
         pwords.push_back(it);
     }
 
-
     wordholder ww(aw);
 
     if(lcnt(ww.value()) == 0) return 0;
@@ -179,18 +146,11 @@ int main(int argc, char **argv)
     vector<worddata *> stack;
     stack.reserve(lcnt(ww.value()));
 
-    std::vector<wordholder> reqd;
-    for(int i=optind; i < argc; i++)
+    wordholder reqd(rw);
+    if(!rw.empty())
     {
-        wordholder rw(argv[i]);
-        if(!candidate(ww.value(), rw.value()))
-        {
-            cerr << "# Cannot make required word " << argv[i] << "\n";
-            abort();
-        }
-        ww.value() = ww.value() - rw.value();
-        reqd.push_back(rw);
-        stack.push_back(reqd.back().w);
+        ww.value() = ww.value() - reqd.value();
+        stack.push_back(reqd.w);
     }
 
     std::vector< std::vector<worddata *> > st;
@@ -198,7 +158,126 @@ int main(int argc, char **argv)
 
     recurse(ww.value(), pwords.begin(), pwords.end(), stack, lengths.begin(), lengths.end(), st.begin(), st.end());
 
-    cerr << "# " << total_matches << " matches in " << setprecision(2) << cputime() << "s\n";
+    cout << "# " << total_matches << " matches in " << setprecision(2) << (cputime() - t0) << "s\n";
 
     return 0;
+}
+
+void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_maxlen) {
+    std::string an;
+    std::string reqd;
+    
+    bool apos = def_apos;
+    size_t minlen = def_minlen;
+    size_t maxlen = def_maxlen;
+    std::vector<size_t> lengths;
+    std::string aw, rw;
+
+    int c;
+    while((c = i.peek()) != EOF)
+    {
+        switch(c) {
+            case '\n':
+                (void) i.get();
+                run(d, apos, minlen, maxlen, lengths, aw, rw);
+                apos = def_apos;
+                minlen = def_minlen;
+                maxlen = def_maxlen;
+                lengths.clear();
+                aw.clear();
+                rw.clear();
+                cout.put('\n'); cout.flush();
+                break;
+            case '<':
+                (void) i.get();
+                i >> maxlen; break;
+            case '>':
+                (void) i.get();
+                i >> minlen; break;
+            case '0': case '1': case '2': case '3': case '4':
+            case '5': case '6': case '7': case '8': case '9':
+                {
+                    size_t len;
+                    i >> len;
+                    lengths.push_back(len);
+                    break;
+                }
+            case '+': case '=':
+                {
+                    std::string s;
+                    (void) i.get();
+                    i >> s;
+                    if(!rw.empty()) rw = rw + " " + s;
+                    else rw = s;
+                    break;
+                }
+            case '?':
+                (void) i.get();
+                break;
+            default: 
+                {
+                    if(isspace(c)) {
+                        (void) i.get();
+                        break;
+                    }
+                    std::string s;
+                    i >> s;
+                    if(!aw.empty()) aw = aw + " " + s;
+                    else aw = s;
+                    break;
+                }
+        }
+    }
+}
+
+int main(int argc, char **argv)
+{
+    const char *dictpath=0, *defdict="/usr/share/dict/words", *bindict=0;
+    int opt;
+    size_t minlen=3, maxlen=11;
+    bool apos=false, server=false;
+    vector<size_t> lengths;
+    string aw;
+
+    while((opt = getopt(argc, argv, "-aD:d:M:m:l:s")) != -1)
+    {
+        switch(opt)
+        {
+            case 'a': apos = !apos; break;
+            case 'D': bindict = optarg; break;
+            case 'd': dictpath = optarg; break;
+            case 'M': maxlen = atoi(optarg); break;
+            case 'm': minlen = atoi(optarg); break;
+            case 'l': lengths = parse_lengths(optarg); break;
+            case 's': server = !server; break;
+            case 1: aw += optarg; break;
+            default:  usage(argv[0]);
+        }
+    }
+
+    dict d;
+    if(bindict && dictpath) {
+        d.readdict(dictpath);
+        d.serialize(bindict);
+        cout << "# Read and serialized " << d.nwords() << " candidate words in " << setprecision(2) << cputime() << "s\n";
+    } else if(bindict) {
+        d.deserialize(bindict);
+        cout << "# Deserialized " << d.nwords() << " candidate words in " << setprecision(2) << cputime() << "s\n";
+    } else {
+        d.readdict(dictpath ? dictpath : defdict);
+        cout << "# Read " << d.nwords() << " candidate words in " << setprecision(2) << cputime() << "s\n";
+    }
+
+    if(server) {
+        serve(cin, d, apos, minlen, maxlen);
+        return 0;
+    } else {
+        std::string rw;
+        for(int i=optind; i<argc; i++)
+        {
+            if(rw.empty()) rw = i;
+            else rw = rw + " " + argv[i];
+        }
+        return run(d, apos, minlen, maxlen, lengths, aw, rw);
+    }
 }
