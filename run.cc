@@ -174,8 +174,13 @@ int main(int argc, char **argv)
 
     worddata ww(aw.c_str());
 
+    if(lcnt(ww) == 0) return 0;
+
     vector<worddata *> stack;
+    stack.reserve(lcnt(ww));
+
     vector<worddata> reqd;
+    reqd.reserve(argc-optind);
     for(int i=optind; i < argc; i++)
     {
         worddata rw(argv[i]);
