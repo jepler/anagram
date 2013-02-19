@@ -172,34 +172,29 @@ int main(int argc, char **argv)
     }
 
 
-    worddata ww(aw.c_str());
+    worddata *ww = worddata::make_word(aw.c_str());
 
-    if(lcnt(ww) == 0) return 0;
+    if(lcnt(*ww) == 0) return 0;
 
     vector<worddata *> stack;
-    stack.reserve(lcnt(ww));
+    stack.reserve(lcnt(*ww));
 
-    vector<worddata> reqd;
-    reqd.reserve(argc-optind);
     for(int i=optind; i < argc; i++)
     {
-        worddata rw(argv[i]);
-        if(!candidate(ww, rw))
+        worddata *rw = worddata::make_word(argv[i]);
+        if(!candidate(*ww, *rw))
         {
             cerr << "# Cannot make required word " << argv[i] << "\n";
             abort();
         }
-        ww = ww - rw;
-        reqd.push_back(rw);
+        *ww = *ww - *rw;
+        stack.push_back(rw);
     }
 
-    for(vector<worddata>::iterator it = reqd.begin(); it != reqd.end(); it++)
-        stack.push_back(&*it);
-
     std::vector< std::vector<worddata *> > st;
-    st.resize(lcnt(ww));
+    st.resize(lcnt(*ww));
 
-    recurse(ww, pwords.begin(), pwords.end(), stack, lengths.begin(), lengths.end(), st.begin(), st.end());
+    recurse(*ww, pwords.begin(), pwords.end(), stack, lengths.begin(), lengths.end(), st.begin(), st.end());
 
     cerr << "# " << total_matches << " matches in " << setprecision(2) << cputime() << "s\n";
 
