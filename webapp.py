@@ -78,7 +78,7 @@ def anagram_app(environ, start_response):
         yield "</div>"
             
         yield "<h1>Array unravels germs</h1>"
-        yield "<form><input type='text' id='query' name='q' value=\"%s\">" % cgi.escape(pi, True)
+        yield "<form id='f'><input type='text' id='query' name='q' value=\"%s\">" % cgi.escape(pi, True)
         yield "<input type='submit' value='anagram'>"
         yield "<script>document.getElementById('query').focus()</script>"
         yield "</form>"

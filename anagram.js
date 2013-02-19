@@ -25,6 +25,24 @@ console.log(loc);
         .always(clearjax);
 }
 
+function fulljax (e) {
+    if(e) e.preventDefault();
+    if(request) request.abort();
+
+console.log('fulljax');
+    var query = $('#query').val();
+    lastquery = query;
+    var loc = (
+        document.location.toString().replace(/\?.*$/, "")
+        + '?' + $.param({'p': 1, 'q': query}));
+console.log(loc);
+    request = $.ajax({'url': loc, 'cache': true})
+        .done(updatejax)
+        .always(clearjax);
+console.log('fulljax returning false');
+    return false;
+}
+
 function mayjax() {
 console.log('mayjax');
     if(request) return;
@@ -34,3 +52,4 @@ console.log('mayjax');
 }
 
 $('#query').keyup(mayjax).change(mayjax);
+$('#f').submit(fulljax);
