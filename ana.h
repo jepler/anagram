@@ -33,8 +33,17 @@ struct worddata
         m = 0;
         l = 0;
         memset(&c, 0, sizeof(c));
+        w[0] = 0;
     }
 
+    operator bool() const { return m; }
+
+    uint32_t m;
+    unsigned char c[26];
+    uint16_t l;
+    char w[1];
+
+private:
     /* Note: Constructor assumes that storage for word has been
        allocated!  Doesn't work with stacked or regular new'd storage.
      */
@@ -55,15 +64,9 @@ struct worddata
         }
     }
 
-    operator bool() const { return m; }
-
-    uint32_t m;
-    unsigned char c[26];
-    uint16_t l;
-    char w[0];
 
     static worddata *make_word(const char *word) {
-        size_t sz = sizeof(worddata) + strlen(word) + 1;
+        size_t sz = sizeof(worddata) + strlen(word);
         char *storage = new char[sz];
         worddata *r = reinterpret_cast<worddata *>(storage);
         new(r) worddata(word);
@@ -73,6 +76,25 @@ struct worddata
     static void delete_word(worddata *word) {
         delete[] reinterpret_cast<char*>(word);
     }
+
+    friend struct wordholder;
+    friend struct dict;
+};
+
+struct wordholder
+{
+    wordholder() : w(worddata::make_word("")) {}
+    wordholder(const wordholder &h) : w(worddata::make_word(h.w->w)) {}
+    wordholder(const char *s) : w(worddata::make_word(s)) {}
+    wordholder(const std::string &s)
+        : w(worddata::make_word(s.c_str())) {}
+
+    ~wordholder() {
+        worddata::delete_word(w);
+    }
+    const worddata &value() const { return *w; }
+    worddata &value() { return *w; }
+    worddata *w;
 };
 
 inline size_t lcnt(const struct worddata &w)
@@ -162,7 +184,7 @@ struct dict {
 
     void addword(const char *word) {
         size_t i = woff.size();
-        size_t sz = pad(sizeof(worddata) + strlen(word) + 1);
+        size_t sz = pad(sizeof(worddata) + strlen(word));
         size_t off = wdata.size();
         wdata.resize(off+sz);
         woff.push_back(off);

@@ -172,29 +172,31 @@ int main(int argc, char **argv)
     }
 
 
-    worddata *ww = worddata::make_word(aw.c_str());
+    wordholder ww(aw);
 
-    if(lcnt(*ww) == 0) return 0;
+    if(lcnt(ww.value()) == 0) return 0;
 
     vector<worddata *> stack;
-    stack.reserve(lcnt(*ww));
+    stack.reserve(lcnt(ww.value()));
 
+    std::vector<wordholder> reqd;
     for(int i=optind; i < argc; i++)
     {
-        worddata *rw = worddata::make_word(argv[i]);
-        if(!candidate(*ww, *rw))
+        wordholder rw(argv[i]);
+        if(!candidate(ww.value(), rw.value()))
         {
             cerr << "# Cannot make required word " << argv[i] << "\n";
             abort();
         }
-        *ww = *ww - *rw;
-        stack.push_back(rw);
+        ww.value() = ww.value() - rw.value();
+        reqd.push_back(rw);
+        stack.push_back(reqd.back().w);
     }
 
     std::vector< std::vector<worddata *> > st;
-    st.resize(lcnt(*ww));
+    st.resize(lcnt(ww.value()));
 
-    recurse(*ww, pwords.begin(), pwords.end(), stack, lengths.begin(), lengths.end(), st.begin(), st.end());
+    recurse(ww.value(), pwords.begin(), pwords.end(), stack, lengths.begin(), lengths.end(), st.begin(), st.end());
 
     cerr << "# " << total_matches << " matches in " << setprecision(2) << cputime() << "s\n";
 
