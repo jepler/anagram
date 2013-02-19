@@ -110,7 +110,7 @@ void bwrite(std::ostream &o, const T &t) {
 
 template<class T>
 void bwrite(std::ostream &o, const T *t, size_t n) {
-    o.write(reinterpret_cast<const char *>(t), sizeof(t)*n);
+    o.write(reinterpret_cast<const char *>(t), sizeof(T)*n);
 }
 
 template<class T>
@@ -120,7 +120,7 @@ void bread(std::istream &o, T &t) {
 
 template<class T>
 void bread(std::istream &o, T *t, size_t n) {
-    o.read(reinterpret_cast<char *>(t), sizeof(t)*n);
+    o.read(reinterpret_cast<char *>(t), sizeof(T)*n);
 }
 
 inline bool ascii(const std::string &s)
