@@ -61,6 +61,18 @@ struct worddata
     unsigned char c[26];
     uint16_t l;
     char w[0];
+
+    static worddata *make_word(const char *word) {
+        size_t sz = sizeof(worddata) + strlen(word) + 1;
+        char *storage = new char[sz];
+        worddata *r = reinterpret_cast<worddata *>(storage);
+        new(r) worddata(word);
+        return r;
+    }
+
+    static void delete_word(worddata *word) {
+        delete[] reinterpret_cast<char*>(word);
+    }
 };
 
 inline size_t lcnt(const struct worddata &w)
