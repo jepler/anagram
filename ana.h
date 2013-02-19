@@ -100,6 +100,7 @@ inline worddata operator-(const worddata &a, const worddata &b)
             r.m |= (1<<i);
         }
     }
+    r.l = a.l - b.l;
     return r;
 }
 
