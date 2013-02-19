@@ -27,71 +27,10 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include <unistd.h>
+#include "ana.h"
 
 using namespace std;
-
-struct worddata
-{
-    worddata()
-    {
-        m = 0;
-        l = 0;
-        w = 0;
-        memset(&c, 0, sizeof(c));
-    }
-
-    worddata(const char *word)
-    {
-        m = 0;
-        l = 0;
-        memset(&c, 0, sizeof(c));
-
-        w = word;
-        const char *s = word;
-        for(;*s;s++) {
-            if(!isalpha(*s)) continue;
-            int o = tolower(*s)-'a';
-            l++;
-            c[o]++;
-            m |= (1<<o);
-        }
-    }
-
-    operator bool() const { return m; }
-
-    unsigned char c[26];
-    uint16_t l;
-    uint32_t m;
-    const char *w;
-};
-
-size_t lcnt(const struct worddata &w)
-{
-    return w.l;
-}
-
-bool candidate(const worddata &a, const worddata &b)
-{
-    if((a.m & b.m) != b.m) return false;
-    for(int i=0; i<26; i++)
-        if(a.c[i] < b.c[i]) return false;
-    return true;
-}
-
-worddata operator-(const worddata &a, const worddata &b)
-{
-    worddata r;
-
-    for(int i=0; i<26; i++)
-    {
-        unsigned char tmp;
-        r.c[i] = tmp = a.c[i] - b.c[i];
-        if(tmp) {
-            r.m |= (1<<i);
-        }
-    }
-    return r;
-}
 
 void usage(const char *progname)
 {
@@ -154,18 +93,6 @@ void recurse(worddata &left,
     }
 }
 
-bool ascii(const string &s)
-{
-    for(string::size_type i=0; i != s.size(); i++)
-        if(!isascii(s[i])) return false;
-    return true;
-}
-
-bool byinvwordlen(const worddata &a, const worddata &b)
-{
-    return lcnt(a) > lcnt(b);
-}
-
 vector<size_t> parse_lengths(const char *l)
 {
     istringstream s(l);
@@ -190,19 +117,20 @@ double cputime()
 
 int main(int argc, char **argv)
 {
-    const char *dict = "/usr/share/dict/words";
+    const char *dictpath=0, *defdict="/usr/share/dict/words", *bindict=0;
     int opt;
     size_t minlen=3, maxlen=11;
     bool apos=false;
     vector<size_t> lengths;
     string aw;
 
-    while((opt = getopt(argc, argv, "-ad:M:m:l:")) != -1)
+    while((opt = getopt(argc, argv, "-aD:d:M:m:l:")) != -1)
     {
         switch(opt)
         {
             case 'a': apos = !apos; break;
-            case 'd': dict = optarg; break;
+            case 'D': bindict = optarg; break;
+            case 'd': dictpath = optarg; break;
             case 'M': maxlen = atoi(optarg); break;
             case 'm': minlen = atoi(optarg); break;
             case 'l': lengths = parse_lengths(optarg); break;
@@ -211,39 +139,35 @@ int main(int argc, char **argv)
         }
     }
 
+    dict d;
+    if(bindict && dictpath) {
+        d.readdict(dictpath);
+        d.serialize(bindict);
+        cerr << "# Read and serialized " << d.nwords() << " candidate words in " << setprecision(2) << cputime() << "s\n";
+    } else if(bindict) {
+        d.deserialize(bindict);
+        cerr << "# Deserialized " << d.nwords() << " candidate words in " << setprecision(2) << cputime() << "s\n";
+    } else {
+        d.readdict(dictpath ? dictpath : defdict);
+        cerr << "# Read " << d.nwords() << " candidate words in " << setprecision(2) << cputime() << "s\n";
+    }
+
     if(!lengths.empty())
     {
         minlen = min(minlen, *min_element(lengths.begin(), lengths.end()));
         maxlen = max(maxlen, *max_element(lengths.begin(), lengths.end()));
     }
 
-    ifstream d(dict);
-    string w;
-    vector<string> words;
-    while((d >> w))
-    {
-        if(!ascii(w)) continue;
-        if(!apos && w.find("'") != string::npos) continue;
-        // worddata ww(w.c_str());
-        // if(lcnt(ww) < minlen || lcnt(ww) > maxlen) continue;
-        words.push_back(w);
-    }
-    vector<worddata> wdata;
-    wdata.reserve(words.size());
     vector<worddata*> pwords;
-    pwords.reserve(words.size());
-    for(vector<string>::iterator it = words.begin(); it != words.end(); it++)
+    pwords.reserve(d.nwords());
+    for(size_t i=0; i != d.nwords(); i++)
     {
-        wdata.push_back(worddata(it->c_str()));
-    }
-    stable_sort(wdata.begin(), wdata.end(), byinvwordlen);
-    for(vector<worddata>::iterator it = wdata.begin(); it != wdata.end(); it++)
-    {
+        worddata *it = d.getword(i);
         if(lcnt(*it) < minlen || lcnt(*it) > maxlen) continue;
-        pwords.push_back(&*it);
+        if(!apos && strchr(it->w, '\'')) continue;
+        pwords.push_back(it);
     }
 
-    cerr << "# Read " << pwords.size() << " candidate words in " << setprecision(2) << cputime() << "s\n";
 
     worddata ww(aw.c_str());
 
