@@ -223,6 +223,7 @@ void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_max
                     break;
                 }
             case '\'':
+                (void) i.get();
                 apos = !apos;
                 break;
             case '?':
