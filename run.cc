@@ -274,6 +274,7 @@ struct filterer
 };
 
 size_t total_matches, max_matches;
+size_t total_searches, max_searches = ~(size_t)0;
 
 void recurse(worddata &left,
         vector<worddata *>::const_iterator start, vector<worddata *>::const_iterator end,
@@ -283,6 +284,11 @@ void recurse(worddata &left,
         vector< vector<worddata *> >::iterator stend)
 {
     if(total_matches == max_matches) return;
+    if(total_searches == max_searches) return;
+    if(++total_searches == max_searches) {
+        cout << "# Reached maximum permitted searches\n";
+        return;
+    }
     if(!left)
     {
         if(!stack.empty())
@@ -340,9 +346,12 @@ double cputime()
 
 
 int run(dict &d, bool apos, size_t minlen, size_t maxlen, size_t maxcount, vector<size_t> &lengths, string &aw, string &rw) {
+    static size_t maxsearch = 100000;
     double t0 = cputime();
     total_matches = 0;
     max_matches = maxcount;
+    total_searches = 0;
+    max_searches = maxsearch;
     if(!lengths.empty())
     {
         minlen = min(minlen, *min_element(lengths.begin(), lengths.end()));
