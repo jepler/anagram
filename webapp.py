@@ -22,6 +22,8 @@ import threading
 import sys
 import os
 import cgi
+import traceback
+import errno
 
 ana = os.path.abspath(os.path.join(os.path.dirname(__file__), "ana"))
 if not os.path.exists(ana): raise SystemExit, "%s does not exist" % ana
@@ -33,7 +35,39 @@ class LocalPipe(threading.local):
 
 pipes = LocalPipe()
 def get_pipe_for_thread():
+    p = pipes.pipe
+    if p.returncode is not None:
+        p = refresh_pipe_for_thread()
+    return p
+def refresh_pipe_for_thread():
+    pipes.pipe.stdin.close()
+    pipes.pipe.stdout.close()
+    pipes.__init__()
     return pipes.pipe
+
+def query(pi):
+    pi = pi.replace('\n', ' ')
+    yield "# Query: " + repr(pi) + "\n"
+    while 1:
+        pipe = get_pipe_for_thread()
+
+        try:
+            pipe.stdin.write(pi + "\n"); pipe.stdin.flush()
+        except IOError, detail:
+            if detail.errno != errno.EPIPE:
+                yield traceback.format_exc()
+                return
+            else:
+                pipe = refresh_pipe_for_thread()
+        else:
+            break
+    while 1:
+        line = pipe.stdout.readline()
+        if line == '': refresh_pipe_for_thread()
+        if not line.strip():
+            break
+        yield line
+
        
 # Every WSGI application must have an application object - a callable
 # object that accepts two arguments. For that purpose, we're going to
@@ -85,17 +119,8 @@ def anagram_app(environ, start_response):
         yield "<pre id='results'>"
 
     if pi:
-        pi = pi.replace('\n', ' ')
-        pipe = get_pipe_for_thread()
-
-        yield "# Query: " + repr(pi) + "\n"
-
-        pipe.stdin.write(pi + "\n"); pipe.stdin.flush()
-        while 1:
-            line = pipe.stdout.readline()
-            if not line.strip():
-                    break
-            yield cgi.escape(line)
+        for row in query(pi):
+            yield cgi.escape(row)
 
     if not plain:
         yield "</pre>"
