@@ -1,0 +1,116 @@
+.TH ANA "1" "2013-02-23" "" ""
+.SH NAME
+ana \- generate anagrams
+.SH DESCRIPTION
+.B ana
+is a program for generating anagrams of input words.  It has several advanced
+features such as length constraints on each word of the generated output,
+a binary dictionary format for reduced startup time, and a server mode which
+makes it useful to invoke from long-lived programs.
+.SH INVOCATION
+.SS Anagramming
+.HP
+.B ana \fR[\fB-d \fItext-dictionary\fR|\fB-D \fIbinary-dictionary\fR]
+[\fB-l \fIlen1,...\fR] [\fB-m \fIminlen\fR]
+[\fB-M \fImaxlen\fR] [\fB-a\fR] \fIterms...\fR \fR[-- \fIrequired-terms...\fR]
+.SS Make a binary dictionary from a text dictionary
+.HP
+.B ana -d\fItext-dictionary\fB -D\fIbinary-dictionary
+.SS Anagram server
+.HP
+.B ana -s \fI[\fB-d\fItext-dictionary\fI|\fB-D\fIbinary-dictionary\fI]
+
+.SH OPTIONS
+.TP
+-d \fItext-dictionary
+.TQ
+-D \fIbinary-dictionary
+Specify the dictionary to be used.  If no dictionary is specified,
+/usr/share/dict/words is used.  If both a text dictionary and a binary
+dictionary are specified, the binary dictionary is written from the text
+dictionary (dictionary generation mode)
+.TP
+-l \fIlen1,...
+Specify one or more length words that are required to appear in the output
+.TP
+-m \fIminlen
+.TQ
+-M \fImaxlen
+Specify the minimum and maximum length of words.  If any \fB-l\fR specification
+exceeds these values, they will be reduced or increased accordingly. (this relation between -m/-M and -l may change in a future version)
+.TP
+-a
+Toggle "accept apostrophes" mode (default: off).  If this mode is off, words
+from the dictionary with apostrophes will never be chosen.  Otherwise, they
+may be chosen.
+.TP
+terms...
+Alphabetic characters from these terms are added to the pool of letters to be
+anagrammed.
+.TP
+-- required-terms...
+Each word from required-terms is included in every result.  Words in this list
+need not be in the dictionary.
+
+.SH SERVER MODE
+In server mode, \fBana\fR produces and consumes line-oriented data.
+The input consists of a search specification and the output consists of
+zero or more non-blank lines, which are either anagram results or
+commentary prefixed with "#", followed by a single blank line.  In a search
+specification, words are interpreted as follows:
+.TP
+<\fInumber\fR
+The maximum word length is set to \fInumber\fR
+.TP
+>\fInumber\fR
+The minimum word length is set to \fInumber\fR
+.TP
+\fInumber\fR
+A word of exactly \fInumber\fR letters must be chosen
+.TP
+\(aq
+Toggle the flag for acceptance of words with apostrophes (default: not accepted)
+.TP
+-\fInumber\fR
+Stop producing results after \fInumber\fR
+.TP
+=\fIword\fR
+The exact word \fIword\fR must be chosen (this works for words not in the
+dictionary)
+.TP
+\fIword\fR
+The letters of \fIword\fR are added to the letters available to anagram
+
+.SH How required lengths and required terms interact
+First, each required term is pulled out of the available letters.  Then for
+each required length, a word of exactly that length is sought.  After the
+list of required lengths is exhausted, words of any length are sought.
+
+Example: Given the term \fIsatisfiable\fR and no further constraints, \fIsafest
+alibi\fR is one of the results produced.  It would also be produced if the
+length constraint \fI6\fR or \fI6,5\fR are specified, or if the required term
+\fIsafest\fR is specified.  If the required term \fIsafest\fR is specified,
+then the length specification \fI5\fR will produce \fIsafest alibi\fR, because
+after the word \fIsafest\fR is produced, the next word uses the first specified
+length.
+
+.SH BUGS
+.SS Non-ASCII environments not supported
+In dictionaries, words with non-ASCII characters are ignored.  Characters
+which are not isalpha() in the "C" locale are ignored for purposes of
+anagramming, and they are always downcased according to tolower() in the "C"
+locale.  The design of the code is such that these limitations are not easily
+lifted.
+
+.SH AUTHOR
+.MT jepler@unpythonic.net
+Jeff Epler
+.ME
+
+.SH COPYRIGHT
+Copyright \[co] 2013
+.MT jepler@unpythonic.net
+Jeff Epler
+.ME
+and licensed under the terms of the GNU General Public License, version 2
+or later.

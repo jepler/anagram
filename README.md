@@ -2,10 +2,10 @@
 
     make
 
-# General running:
+# Use instructions:
 
     ./ana terms...
-    ./ana -? # for help
+    man ./ana.1 ;# for help
 
 # Binary dictionaries
 These start a bit faster than reading the system dictionary.
