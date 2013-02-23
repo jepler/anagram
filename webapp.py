@@ -59,10 +59,10 @@ def anagram_app(environ, start_response):
     start_response(status, headers)
 
     if not plain:
-        yield "<html><head><title>Surly anagram server</title></head>"
+        yield "<html><head><title>Surly Anagram Server</title></head>"
 
         yield "<body>"
-        yield "<div style='float:right'>"
+        yield "<div style='float:right; font-size: 71%;'>"
         yield "<p>Cheatsheet:</p>"
         yield "<dl>"
         yield "<dt>letters... <dd> Letters available to anagram\n"
@@ -78,7 +78,6 @@ def anagram_app(environ, start_response):
         yield " <a href='https://github.com/jepler/anagram'>github</a></p>"
         yield "</div>"
             
-        yield "<h1>Array unravels germs</h1>"
         yield "<form id='f'><input type='text' id='query' name='q' value=\"%s\">" % cgi.escape(pi, True)
         yield "<input type='submit' value='anagram'>"
         yield "<script>document.getElementById('query').focus()</script>"
