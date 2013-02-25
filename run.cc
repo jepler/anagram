@@ -16,6 +16,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef ANA_AS_PYMODULE
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
+#endif
+
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -256,13 +261,13 @@ void usage(const char *progname)
     exit(1);
 }
 
-void print_stack(vector<worddata *> &s)
+void print_stack(ostream &o, vector<worddata *> &s)
 {
     for(vector<worddata *>::const_iterator it = s.begin(); it != s.end(); it++)
     {
-        cout << (*it)->w;
-        if(it + 1 == s.end()) cout << "\n";
-        else cout << " ";
+        o << (*it)->w;
+        if(it + 1 == s.end()) o << "\n";
+        else o << " ";
     }
 }
 
@@ -276,7 +281,7 @@ struct filterer
 size_t total_matches, max_matches;
 size_t total_searches, max_searches = ~(size_t)0;
 
-void recurse(worddata &left,
+void recurse(ostream &o, worddata &left,
         vector<worddata *>::const_iterator start, vector<worddata *>::const_iterator end,
         vector<worddata *> &stack,
         vector<size_t>::iterator lstart, vector<size_t>::iterator lend,
@@ -286,7 +291,7 @@ void recurse(worddata &left,
     if(total_matches == max_matches) return;
     if(total_searches == max_searches) return;
     if(++total_searches == max_searches) {
-        cout << "# Reached maximum permitted searches\n";
+        o << "# Reached maximum permitted searches\n";
         return;
     }
     if(!left)
@@ -294,9 +299,9 @@ void recurse(worddata &left,
         if(!stack.empty())
         {
             total_matches ++;
-            print_stack(stack);
+            print_stack(o, stack);
             if(total_matches == max_matches) 
-                cout << "# Reached maximum permitted matches\n";
+                o << "# Reached maximum permitted matches\n";
         }
         return;
     }
@@ -311,12 +316,12 @@ void recurse(worddata &left,
         if(lstart == lend)
         {
             worddata newleft = left - **it;
-            recurse(newleft, it, newcandidates.end(), stack, lstart, lend, state+1, stend);
+            recurse(o, newleft, it, newcandidates.end(), stack, lstart, lend, state+1, stend);
         }
         else if(lcnt(**it) == *lstart) 
         {
             worddata newleft = left - **it;
-            recurse(newleft, newcandidates.begin(), newcandidates.end(), stack, lstart+1, lend, state+1, stend);
+            recurse(o, newleft, newcandidates.begin(), newcandidates.end(), stack, lstart+1, lend, state+1, stend);
         }
         stack.pop_back();
     }
@@ -345,7 +350,7 @@ double cputime()
 }
 
 
-int run(dict &d, bool apos, size_t minlen, size_t maxlen, size_t maxcount, vector<size_t> &lengths, string &aw, string &rw) {
+int run(dict &d, ostream &o, bool apos, size_t minlen, size_t maxlen, size_t maxcount, vector<size_t> &lengths, string &aw, string &rw) {
     static size_t maxsearch = 100000;
     double t0 = cputime();
     total_matches = 0;
@@ -385,14 +390,14 @@ int run(dict &d, bool apos, size_t minlen, size_t maxlen, size_t maxcount, vecto
     vector< vector<worddata *> > st;
     st.resize(lcnt(ww.value()));
 
-    recurse(ww.value(), pwords.begin(), pwords.end(), stack, lengths.begin(), lengths.end(), st.begin(), st.end());
+    recurse(o, ww.value(), pwords.begin(), pwords.end(), stack, lengths.begin(), lengths.end(), st.begin(), st.end());
 
-    cout << "# " << total_matches << " matches in " << setprecision(2) << (cputime() - t0) << "s\n";
+    o << "# " << total_matches << " matches in " << setprecision(2) << (cputime() - t0) << "s\n";
 
     return 0;
 }
 
-void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
+void serve(istream &i, ostream &o, dict &d, bool def_apos, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
     string an;
     string reqd;
     
@@ -409,7 +414,7 @@ void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_max
         switch(c) {
             case '\n':
                 (void) i.get();
-                run(d, apos, minlen, maxlen, maxcount, lengths, aw, rw);
+                run(d, o, apos, minlen, maxlen, maxcount, lengths, aw, rw);
                 apos = def_apos;
                 minlen = def_minlen;
                 maxlen = def_maxlen;
@@ -417,7 +422,7 @@ void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_max
                 lengths.clear();
                 aw.clear();
                 rw.clear();
-                cout.put('\n'); cout.flush();
+                o.put('\n'); o.flush();
                 break;
             case '<':
                 (void) i.get();
@@ -472,6 +477,125 @@ void serve(istream &i, dict &d, bool def_apos, size_t def_minlen, size_t def_max
     }
 }
 
+#ifdef ANA_AS_PYMODULE
+PyObject *slice_and_dice(std::string s)
+{
+    static PyObject *nl = PyString_FromString("\n");
+    static PyObject *rstrip = PyString_FromString("rstrip");
+    static PyObject *split = PyString_FromString("split");
+
+    PyObject *os = PyString_FromStringAndSize(s.data(), s.size());
+    if(!os) return NULL;
+
+    PyObject *ss = PyObject_CallMethodObjArgs(os, rstrip, nl, NULL);
+    Py_XDECREF(os);
+    if(!ss) return NULL;
+
+    PyObject *xs = PyObject_CallMethodObjArgs(ss, split, nl, NULL);
+    Py_XDECREF(ss);
+    return xs;
+}
+
+struct dict_object {
+    PyObject_HEAD
+    dict d;
+};
+
+PyObject *py_run(PyObject *self, PyObject *args, PyObject *keywds) {
+    dict_object *d = (dict_object*)self;
+    int apos = false;
+    Py_ssize_t minlen = 3;
+    Py_ssize_t maxlen = 11;
+    Py_ssize_t maxcount = 1000;
+
+    char *terms;
+    Py_ssize_t terms_sz;
+    static const char * kwlist[]
+	= {"terms", "apos", "minlen", "maxlen", "maxcount", NULL};
+    if(!PyArg_ParseTupleAndKeywords(args, keywds, "s#|innn:ana.dict.run",
+	    const_cast<char**>(kwlist),
+	    &terms, &terms_sz, &minlen, &maxlen, &maxcount))
+	return NULL;
+    
+    std::string query(terms, terms+terms_sz);
+    std::replace(query.begin(), query.end(), '\n', ' ');
+    query += '\n';
+    std::istringstream is(query);
+    std::ostringstream os;
+
+    serve(is, os, d->d, apos, minlen, maxlen, maxcount);
+
+    return slice_and_dice(os.str());
+}
+
+static PyMethodDef dict_methods[] = {
+    {"run", reinterpret_cast<PyCFunction>(py_run), METH_VARARGS|METH_KEYWORDS,
+	"Run one anagram"},
+    {},
+};
+
+static PyTypeObject dict_type = {
+    PyObject_HEAD_INIT(NULL)
+    0,
+    "ana.anadict",
+    sizeof(dict_object),
+};
+
+static PyObject *
+dict_new(PyTypeObject *type, PyObject *args, PyObject *kw) {
+    dict_object *self = reinterpret_cast<dict_object*>(type->tp_alloc(type, 0));
+    new(&self->d) dict();
+    return (PyObject *)self;
+}
+
+static void
+dict_dealloc(dict_object *self) {
+    self->d.~dict();
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static PyObject *
+py_fromascii(PyObject *self, PyObject *args) {
+    PyObject *d = dict_new(&dict_type, NULL, NULL);
+    dict_object *r = reinterpret_cast<dict_object*>(d);
+    char *path;
+    if(!PyArg_ParseTuple(args, "s", &path)) return NULL;
+    r->d.readdict(path);
+    return d;
+}
+
+static PyObject *
+py_frombin(PyObject *self, PyObject *args) {
+    PyObject *d = dict_new(&dict_type, NULL, NULL);
+    dict_object *r = reinterpret_cast<dict_object*>(d);
+    char *path;
+    if(!PyArg_ParseTuple(args, "s", &path)) return NULL;
+    r->d.deserialize(path);
+    return d;
+}
+
+
+static PyMethodDef methods[] = {
+    {"from_ascii", py_fromascii, METH_VARARGS, "Parse ASCII dictionary"},
+    {"from_binary", py_frombin, METH_VARARGS, "Parse binary dictionary"},
+    {},
+};
+
+PyMODINIT_FUNC
+initana(void) {
+    PyObject *m;
+    m = Py_InitModule("ana", methods);
+
+    dict_type.tp_flags = Py_TPFLAGS_DEFAULT;
+    dict_type.tp_new = dict_new;
+    dict_type.tp_dealloc = reinterpret_cast<destructor>(dict_dealloc);
+    dict_type.tp_methods = dict_methods;
+    if(PyType_Ready(&dict_type) < 0) return;
+
+    PyModule_AddObject(m, "anadict", (PyObject *)&dict_type);
+}
+
+#else
 int main(int argc, char **argv)
 {
     const char *dictpath=0, *defdict="/usr/share/dict/words", *bindict=0;
@@ -512,7 +636,7 @@ int main(int argc, char **argv)
     }
 
     if(server) {
-        serve(cin, d, apos, minlen, maxlen, maxcount);
+        serve(cin, cout, d, apos, minlen, maxlen, maxcount);
         return 0;
     } else {
         string rw;
@@ -521,6 +645,7 @@ int main(int argc, char **argv)
             if(rw.empty()) rw = i;
             else rw = rw + " " + argv[i];
         }
-        return run(d, apos, minlen, maxlen, maxcount, lengths, aw, rw);
+        return run(d, cout, apos, minlen, maxlen, maxcount, lengths, aw, rw);
     }
 }
+#endif
