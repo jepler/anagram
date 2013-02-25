@@ -23,8 +23,8 @@ then use it with
 
         ./ana -D dict.bin -d /usr/share/dict/words
 
- 1.    Copy ana, the binary dictionary, anagram.js and webapp.py to your
- webspace
+ 1.    Copy anamodule.so, the binary dictionary, anagram.js and webapp.py to
+ your webspace (or put anamodule.so on your PYTHONPATH)
 
  1.    Set up .htaccess, e.g.,
 

@@ -24,49 +24,12 @@ import os
 import cgi
 import traceback
 import errno
+import ana
 
-ana = os.path.abspath(os.path.join(os.path.dirname(__file__), "ana"))
-if not os.path.exists(ana): raise SystemExit, "%s does not exist" % ana
-
-class LocalPipe(threading.local):
-    def __init__(self):
-        self.pipe = subprocess.Popen([ana, "-D", "dict.bin", "-s"],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=1)
-
-pipes = LocalPipe()
-def get_pipe_for_thread():
-    p = pipes.pipe
-    if p.returncode is not None:
-        p = refresh_pipe_for_thread()
-    return p
-def refresh_pipe_for_thread():
-    pipes.pipe.stdin.close()
-    pipes.pipe.stdout.close()
-    pipes.__init__()
-    return pipes.pipe
+d = ana.from_binary("dict.bin")
 
 def query(pi):
-    pi = pi.replace('\n', ' ')
-    yield "# Query: " + repr(pi) + "\n"
-    while 1:
-        pipe = get_pipe_for_thread()
-
-        try:
-            pipe.stdin.write(pi + "\n"); pipe.stdin.flush()
-        except IOError, detail:
-            if detail.errno != errno.EPIPE:
-                yield traceback.format_exc()
-                return
-            else:
-                pipe = refresh_pipe_for_thread()
-        else:
-            break
-    while 1:
-        line = pipe.stdout.readline()
-        if line == '': refresh_pipe_for_thread()
-        if not line.strip():
-            break
-        yield line
+    return d.run(pi)
 
        
 # Every WSGI application must have an application object - a callable
@@ -119,8 +82,12 @@ def anagram_app(environ, start_response):
         yield "<pre id='results'>"
 
     if pi:
+	if plain: e = lambda x: x
+	else: e = cgi.escape
+	yield "# Query: " + e(repr(pi)) + "\n"
+
         for row in query(pi):
-            yield cgi.escape(row)
+            yield e(row) + "\n"
 
     if not plain:
         yield "</pre>"
