@@ -26,7 +26,7 @@ import traceback
 import errno
 import ana
 
-d = ana.from_binary("dict.bin")
+d = ana.from_binary('dict.bin')
 
 def query(pi):
     return d.run(pi)
@@ -56,45 +56,46 @@ def anagram_app(environ, start_response):
     start_response(status, headers)
 
     if not plain:
-        yield "<html><head><title>Surly Anagram Server</title></head>"
+        yield '<!DOCTYPE html>'
+        yield '<html><meta charset="UTF-8"><head><title>Surly Anagram Server</title></head>'
 
-        yield "<body>"
-        yield "<div style='float:right; font-size: 71%;'>"
-        yield "<p>Cheatsheet:</p>"
-        yield "<dl>"
-        yield "<dt>letters... <dd> Letters available to anagram\n"
-        yield "<dt>=word <dd> word must be in result\n"
-        yield "<dt>&gt;n <dd> words must contain at least n letters\n"
-        yield "<dt>&lt;n <dd> words must contain at most n letters\n"
-        yield "<dt>' <dd> words with apostrophes are considered\n"
-        yield "<dt>n <dd> choose a word with exactly n letters\n"
-        yield "<dt>-n <dd> display at most n results (limit 1000)\n"
-        yield "</dl>"
-        yield "<p>In ajax mode, hit enter or click 'anagram' to do get full results</p>"
-        yield "<p>Source (web app and unix commandline program) on"
-        yield " <a href='https://github.com/jepler/anagram'>github</a></p>"
-        yield "</div>"
+        yield '<body>'
+        yield '<div style="float:right; font-size: 71%;">'
+        yield '<p>Cheatsheet:</p>'
+        yield '<dl>'
+        yield '<dt>letters... <dd> Letters available to anagram\n'
+        yield '<dt>=word <dd> word must be in result\n'
+        yield '<dt>&gt;n <dd> words must contain at least n letters\n'
+        yield '<dt>&lt;n <dd> words must contain at most n letters\n'
+        yield '<dt>\' <dd> words with apostrophes are considered\n'
+        yield '<dt>n <dd> choose a word with exactly n letters\n'
+        yield '<dt>-n <dd> display at most n results (limit 1000)\n'
+        yield '</dl>'
+        yield '<p>In ajax mode, hit enter or click "anagram" to do get full results</p>'
+        yield '<p>Source (web app and unix commandline program) on'
+        yield ' <a href="https://github.com/jepler/anagram">github</a></p>'
+        yield '</div>'
             
-        yield "<form id='f'><input type='text' id='query' name='q' value=\"%s\">" % cgi.escape(pi, True)
-        yield "<input type='submit' value='anagram'>"
-        yield "<script>document.getElementById('query').focus()</script>"
-        yield "</form>"
-        yield "<pre id='results'>"
+        yield '<form id="f"><input type="text" id="query" name="q" value="%s">' % cgi.escape(pi, True)
+        yield '<input type="submit" value="anagram">'
+        yield '<script>document.getElementById("query").focus()</script>'
+        yield '</form>'
+        yield '<pre id="results">'
 
     if pi:
 	if plain: e = lambda x: x
 	else: e = cgi.escape
-	yield "# Query: " + e(repr(pi)) + "\n"
+	yield '# Query: ' + e(repr(pi)) + '\n'
 
         for row in query(pi):
-            yield e(row) + "\n"
+            yield e(row) + '\n'
 
     if not plain:
-        yield "</pre>"
+        yield '</pre>'
         yield '<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>'
         yield '<script src="anagram.js"></script>'
 
-        yield "</body></html>"
+        yield '</body></html>'
 
 from flup.server.fcgi import WSGIServer
 WSGIServer(anagram_app).run()
