@@ -1,12 +1,12 @@
 var request = null, lastquery = '';
 
 function updatejax() {
-    console.log('updatejax?');
     if(!request) return;
-    console.log('updatejax?' + request.readyState + " ." + request.responseType + ".");
     if(request.readyState > 1) {
-        console.log('updatejax ' + request.readyState);
-        $('#results').text(request.response);
+        if(request.response)
+            $('#results').text(request.response);
+        else if(request.responseText)
+            $('#results').text(request.responseText);
         if(request.readyState == 4) {
             clearjax();
         }
@@ -14,9 +14,8 @@ function updatejax() {
 }
 
 function clearjax() {
-    var query = $('#query').val();
-    if (query != lastquery) queuejax();
-    else request = null;
+    request = null;
+    mayjax();
 }
 
 function makejax() {
@@ -25,7 +24,7 @@ function makejax() {
     return null;
 }
 
-function queuejax (suffix = ' -50') {
+function queuejax (suffix) {
     var query = $('#query').val();
     lastquery = query;
     var loc = (
@@ -36,10 +35,13 @@ function queuejax (suffix = ' -50') {
     request.overrideMimeType('text/plain')
     request.onprogress = updatejax;
     request.onloadend = updatejax;
+    request.onload = updatejax;
+    request.onerror = updatejax;
     request.send(null);
-    window.history.replaceState({'q': query + suffix}, '',
-        document.location.toString().replace(/[?#].*$/, "")
-        + '?' + $.param({'q': query + suffix}));
+    if(window && window.history && window.history.replaceState)
+        window.history.replaceState({}, '',
+            document.location.toString().replace(/[?#].*$/, "")
+            + '?' + $.param({'q': query}));
 }
 
 function fulljax (e) {
