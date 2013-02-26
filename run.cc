@@ -276,7 +276,7 @@ void print_stack(ostream &o, vector<worddata *> &s)
 struct filterer
 {
     filterer(const worddata &a) : a(a) { }
-    bool operator()(worddata *b) { return candidate(a, *b); }
+    bool operator()(const worddata *b) const { return candidate(a, *b); }
     const worddata &a;
 };
 
