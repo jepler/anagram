@@ -307,7 +307,7 @@ struct ana_cfg {
     ana_cfg()
     : apos(0), minlen(3), maxlen(10),
             total_matches(0), max_matches(1000), total_searches(0),
-            max_searches(100000) {}
+            max_searches(1000000) {}
 
     ana_cfg(bool apos, size_t minlen, size_t maxlen, size_t max_matches,
             size_t max_searches, const vector<size_t>& lengths,
@@ -379,15 +379,6 @@ bool words_to_string(const vector<const char*> words, std::string &resultline) {
 bool step(ana_st &st, string &resultline) {
     resultline = string();
 
-    if(st.cfg.total_searches == st.cfg.max_searches) {
-        ostringstream o;
-        o << "# Reached maximum of " << st.cfg.total_searches << " searches in " << setprecision(2) << (cputime() - st.t0) << "s";
-        resultline = o.str();
-        return false;
-    }
-
-    st.cfg.total_searches ++;
-
     if(st.cfg.total_matches == st.cfg.max_matches) {
         ostringstream o;
         o << "# Reached maximum of " << st.cfg.total_matches << " matches in " << setprecision(2) << (cputime() - st.t0) << "s";
@@ -396,6 +387,15 @@ bool step(ana_st &st, string &resultline) {
     }
 
     while(!st.fr.empty()) {
+        if(st.cfg.total_searches == st.cfg.max_searches) {
+            ostringstream o;
+            o << "# Reached maximum of " << st.cfg.total_searches << " searches in " << setprecision(2) << (cputime() - st.t0) << "s";
+            resultline = o.str();
+            return false;
+        }
+
+        st.cfg.total_searches ++;
+
         ana_frame &f = st.fr.back();
 
         if(!f.l) {
@@ -446,11 +446,8 @@ bool step(ana_st &st, string &resultline) {
     return false;
 }
 
-size_t maxsearch = 10000;
-int run(dict &d, ostream &o, bool apos, size_t minlen, size_t maxlen, size_t maxcount, vector<size_t> &lengths, string &aw, string &rw) {
+int run(dict &d, ostream &o, ana_cfg &cfg) {
     ana_st st;
-    ana_cfg cfg(apos, minlen, maxlen, maxcount, maxsearch, lengths, aw, rw);
-    cfg.max_searches = ~(size_t)0;
     setup(st, cfg, d);
     while(1) {
         std::string line;
@@ -462,8 +459,13 @@ int run(dict &d, ostream &o, bool apos, size_t minlen, size_t maxlen, size_t max
 }
 
 
+size_t maxsearch = 1000000;
+int run(dict &d, ostream &o, bool apos, size_t minlen, size_t maxlen, size_t maxcount, vector<size_t> &lengths, string &aw, string &rw) {
+    ana_cfg cfg(apos, minlen, maxlen, maxcount, maxsearch, lengths, aw, rw);
+    return run(d, o, cfg);
+}
 
-void serve(istream &i, ostream &o, dict &d, bool def_apos, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
+void parse(const std::string &s, ana_cfg &st, bool def_apos, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
     string an;
     string reqd;
     
@@ -475,21 +477,12 @@ void serve(istream &i, ostream &o, dict &d, bool def_apos, size_t def_minlen, si
     string aw, rw;
 
     int c;
+
+    istringstream i(s);
+
     while((c = i.peek()) != EOF)
     {
         switch(c) {
-            case '\n':
-                (void) i.get();
-                run(d, o, apos, minlen, maxlen, maxcount, lengths, aw, rw);
-                apos = def_apos;
-                minlen = def_minlen;
-                maxlen = def_maxlen;
-                maxcount = def_maxcount;
-                lengths.clear();
-                aw.clear();
-                rw.clear();
-                o.put('\n'); o.flush();
-                break;
             case '<':
                 (void) i.get();
                 i >> maxlen; break;
@@ -540,6 +533,20 @@ void serve(istream &i, ostream &o, dict &d, bool def_apos, size_t def_minlen, si
                     break;
                 }
         }
+    }
+    st.~ana_cfg();
+    new(&st) ana_cfg(apos, minlen, maxlen, maxcount, maxsearch,
+                    lengths, aw, rw);
+}
+
+void serve(istream &i, ostream &o, dict &d, bool def_apos, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
+    
+    string s;
+    while((getline(i, s))) {
+        ana_cfg cfg;
+        parse(s, cfg, def_apos, def_minlen, def_maxlen, def_maxcount);
+        run(d, o, cfg);
+        o.put('\n'); o.flush();
     }
 }
 
