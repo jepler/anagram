@@ -107,6 +107,8 @@ struct wordholder
     const worddata &value() const { return *w; }
     worddata &value() { return *w; }
     worddata *w;
+private:
+    wordholder &operator=(const wordholder &o);
 };
 
 inline size_t lcnt(const struct worddata &w)
