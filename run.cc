@@ -480,7 +480,7 @@ void serve(istream &i, ostream &o, dict &d, bool def_apos, size_t def_minlen, si
 }
 
 #ifdef ANA_AS_PYMODULE
-PyObject *slice_and_dice(std::string s)
+PyObject *slice_and_dice(string s)
 {
     static PyObject *nl = PyString_FromString("\n");
     static PyObject *rstrip = PyString_FromString("rstrip");
@@ -519,11 +519,11 @@ PyObject *py_run(PyObject *self, PyObject *args, PyObject *keywds) {
 	    &terms, &terms_sz, &minlen, &maxlen, &maxcount))
 	return NULL;
     
-    std::string query(terms, terms+terms_sz);
-    std::replace(query.begin(), query.end(), '\n', ' ');
+    string query(terms, terms+terms_sz);
+    replace(query.begin(), query.end(), '\n', ' ');
     query += '\n';
-    std::istringstream is(query);
-    std::ostringstream os;
+    istringstream is(query);
+    ostringstream os;
 
     serve(is, os, d->d, apos, minlen, maxlen, maxcount);
 
