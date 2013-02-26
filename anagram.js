@@ -41,6 +41,7 @@ function makejax() {
 function queuejax (suffix) {
     var query = $('#query').val();
     lastquery = query;
+    query = query.replace(/[=<>-]\s*$/, '')
     var loc = (
         document.location.toString().replace(/[?#].*$/, "")
         + '?' + $.param({'p': 1, 'q': query + suffix}));
