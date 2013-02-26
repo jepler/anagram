@@ -540,7 +540,6 @@ void parse(const std::string &s, ana_cfg &st, bool def_apos, size_t def_minlen, 
 }
 
 void serve(istream &i, ostream &o, dict &d, bool def_apos, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
-    
     string s;
     while((getline(i, s))) {
         ana_cfg cfg;
@@ -551,28 +550,35 @@ void serve(istream &i, ostream &o, dict &d, bool def_apos, size_t def_minlen, si
 }
 
 #ifdef ANA_AS_PYMODULE
-PyObject *slice_and_dice(string s)
-{
-    static PyObject *nl = PyString_FromString("\n");
-    static PyObject *rstrip = PyString_FromString("rstrip");
-    static PyObject *split = PyString_FromString("split");
-
-    PyObject *os = PyString_FromStringAndSize(s.data(), s.size());
-    if(!os) return NULL;
-
-    PyObject *ss = PyObject_CallMethodObjArgs(os, rstrip, nl, NULL);
-    Py_XDECREF(os);
-    if(!ss) return NULL;
-
-    PyObject *xs = PyObject_CallMethodObjArgs(ss, split, nl, NULL);
-    Py_XDECREF(ss);
-    return xs;
-}
-
 struct dict_object {
     PyObject_HEAD
     dict d;
 };
+
+static PyTypeObject dict_type = {
+    PyObject_HEAD_INIT(NULL)
+    0,
+    "ana.anadict",
+    sizeof(dict_object),
+};
+
+struct search_object {
+    PyObject_HEAD;
+    dict_object *d;
+    ana_st *st;
+};
+
+static PyTypeObject search_type = {
+    PyObject_HEAD_INIT(NULL)
+    0,
+    "ana.results",
+    sizeof(search_object),
+};
+
+search_object *search_new(PyTypeObject *type, PyObject *args, PyObject *kw)
+{
+    return reinterpret_cast<search_object*>(type->tp_alloc(type, 0));
+}
 
 PyObject *py_run(PyObject *self, PyObject *args, PyObject *keywds) {
     dict_object *d = (dict_object*)self;
@@ -587,18 +593,21 @@ PyObject *py_run(PyObject *self, PyObject *args, PyObject *keywds) {
 	= {"terms", "apos", "minlen", "maxlen", "maxcount", NULL};
     if(!PyArg_ParseTupleAndKeywords(args, keywds, "s#|innn:ana.dict.run",
 	    const_cast<char**>(kwlist),
-	    &terms, &terms_sz, &minlen, &maxlen, &maxcount))
+	    &terms, &terms_sz, &apos, &minlen, &maxlen, &maxcount))
 	return NULL;
     
     string query(terms, terms+terms_sz);
-    replace(query.begin(), query.end(), '\n', ' ');
-    query += '\n';
-    istringstream is(query);
-    ostringstream os;
 
-    serve(is, os, d->d, apos, minlen, maxlen, maxcount);
+    search_object *o = search_new(&search_type, 0, 0);
+    o->d = d;
+    Py_INCREF(d);
 
-    return slice_and_dice(os.str());
+    ana_cfg cfg;
+    o->st = new ana_st;
+    parse(query, cfg, apos, minlen, maxlen, maxcount);
+    setup(*o->st, cfg, d->d);
+
+    return reinterpret_cast<PyObject*>(o);
 }
 
 static PyMethodDef dict_methods[] = {
@@ -606,14 +615,6 @@ static PyMethodDef dict_methods[] = {
 	"Run one anagram"},
     {},
 };
-
-static PyTypeObject dict_type = {
-    PyObject_HEAD_INIT(NULL)
-    0,
-    "ana.anadict",
-    sizeof(dict_object),
-};
-
 static PyObject *
 dict_new(PyTypeObject *type, PyObject *args, PyObject *kw) {
     dict_object *self = reinterpret_cast<dict_object*>(type->tp_alloc(type, 0));
@@ -647,12 +648,37 @@ py_frombin(PyObject *self, PyObject *args) {
     return d;
 }
 
-
 static PyMethodDef methods[] = {
     {"from_ascii", py_fromascii, METH_VARARGS, "Parse ASCII dictionary"},
     {"from_binary", py_frombin, METH_VARARGS, "Parse binary dictionary"},
     {},
 };
+
+static PyObject *
+search_iter(PyObject *self) {
+    Py_INCREF(self);
+    return self;
+}
+
+// Note: it's up to the user to ensure no more than one thread is calling
+// .next() on a specific search_object at the same time
+static PyObject *
+search_iternext(search_object *self) {
+    std::string result;
+    if(!self->st) return NULL;
+    Py_BEGIN_ALLOW_THREADS
+    bool res = step(*self->st, result);
+    if(!res) { delete self->st; self->st = NULL; }
+    Py_END_ALLOW_THREADS
+    return PyString_FromStringAndSize(result.data(), result.size());
+}
+
+static void
+search_dealloc(search_object *self) {
+    Py_XDECREF(self->d);
+    delete self->st;
+    self->ob_type->tp_free((PyObject*)self);
+}
 
 PyMODINIT_FUNC
 initana(void) {
@@ -664,6 +690,14 @@ initana(void) {
     dict_type.tp_dealloc = reinterpret_cast<destructor>(dict_dealloc);
     dict_type.tp_methods = dict_methods;
     if(PyType_Ready(&dict_type) < 0) return;
+
+    search_type.tp_flags = Py_TPFLAGS_DEFAULT;
+    search_type.tp_new = reinterpret_cast<newfunc>(search_new);
+    search_type.tp_dealloc = reinterpret_cast<destructor>(search_dealloc);
+    search_type.tp_iter = reinterpret_cast<getiterfunc>(search_iter);
+    search_type.tp_iternext =
+        reinterpret_cast<iternextfunc>(search_iternext);
+    if(PyType_Ready(&search_type) < 0) return;
 
     PyModule_AddObject(m, "anadict", (PyObject *)&dict_type);
 }
