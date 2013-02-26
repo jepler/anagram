@@ -280,55 +280,6 @@ struct filterer
     const worddata &a;
 };
 
-size_t total_matches, max_matches;
-size_t total_searches, max_searches = ~(size_t)0;
-
-void recurse(ostream &o, worddata &left,
-        vector<worddata *>::const_iterator start, vector<worddata *>::const_iterator end,
-        vector<worddata *> &stack,
-        vector<size_t>::iterator lstart, vector<size_t>::iterator lend,
-        vector< vector<worddata *> >::iterator state,
-        vector< vector<worddata *> >::iterator stend)
-{
-    if(total_matches == max_matches) return;
-    if(total_searches == max_searches) return;
-    if(++total_searches == max_searches) {
-        o << "# Reached maximum permitted searches\n";
-        return;
-    }
-    if(!left)
-    {
-        if(!stack.empty())
-        {
-            total_matches ++;
-            print_stack(o, stack);
-            if(total_matches == max_matches) 
-                o << "# Reached maximum permitted matches\n";
-        }
-        return;
-    }
-    vector<worddata *> &newcandidates = *state;
-    newcandidates.clear();
-    copy_if(start, end, back_inserter(newcandidates),
-            filterer(left));
-    for(vector<worddata *>::const_iterator it = newcandidates.begin();
-            it != newcandidates.end(); it++)
-    {
-        stack.push_back(*it);
-        if(lstart == lend)
-        {
-            worddata newleft = left - **it;
-            recurse(o, newleft, it, newcandidates.end(), stack, lstart, lend, state+1, stend);
-        }
-        else if(lcnt(**it) == *lstart) 
-        {
-            worddata newleft = left - **it;
-            recurse(o, newleft, newcandidates.begin(), newcandidates.end(), stack, lstart+1, lend, state+1, stend);
-        }
-        stack.pop_back();
-    }
-}
-
 vector<size_t> parse_lengths(const char *l)
 {
     istringstream s(l);
@@ -352,52 +303,165 @@ double cputime()
 }
 
 
-int run(dict &d, ostream &o, bool apos, size_t minlen, size_t maxlen, size_t maxcount, vector<size_t> &lengths, string &aw, string &rw) {
-    static size_t maxsearch = 100000;
-    double t0 = cputime();
-    total_matches = 0;
-    max_matches = maxcount;
-    total_searches = 0;
-    max_searches = maxsearch;
-    if(!lengths.empty())
-    {
-        minlen = min(minlen, *min_element(lengths.begin(), lengths.end()));
-        maxlen = max(maxlen, *max_element(lengths.begin(), lengths.end()));
+struct ana_cfg {
+    ana_cfg()
+    : apos(0), minlen(3), maxlen(10),
+            total_matches(0), max_matches(1000), total_searches(0),
+            max_searches(100000) {}
+
+    ana_cfg(bool apos, size_t minlen, size_t maxlen, size_t max_matches,
+            size_t max_searches, const vector<size_t>& lengths,
+            const string &ws, const string &rs)
+    : apos(apos), minlen(minlen), maxlen(maxlen),
+            total_matches(0), max_matches(max_matches), total_searches(0),
+            max_searches(max_searches), lengths(lengths), rs(rs), ww(wordholder(ws).value() - wordholder(rs).value()) {
     }
 
-    vector<worddata*> pwords;
-    pwords.reserve(d.nwords());
+    bool apos;
+    size_t minlen, maxlen;
+    size_t total_matches, max_matches, total_searches, max_searches;
+    vector<size_t> lengths;
+    std::string rs;
+    worddata ww;
+};
+
+struct ana_frame {
+    worddata l;
+    vector<const worddata*> c;
+    vector<const worddata*>::iterator st, en;
+    vector<size_t>::iterator lst, len;
+};
+
+struct ana_st {
+    ana_cfg cfg;
+    double t0;
+    vector<ana_frame> fr;
+    vector<const char *> words;
+};
+
+void setup(ana_st &st, const ana_cfg &cfg, const dict &d)
+{
+    st.cfg = cfg;
+    st.t0 = cputime();
+    st.fr.clear();
+    st.fr.reserve(lcnt(cfg.ww));
+    st.fr.push_back(ana_frame());
+    ana_frame &f = st.fr.back();
+    f.l = st.cfg.ww;
+    f.lst = st.cfg.lengths.begin();
+    f.len = st.cfg.lengths.end();
+    filterer fi(f.l);
     for(size_t i=0; i != d.nwords(); i++)
     {
-        worddata *it = d.getword(i);
-        if(lcnt(*it) < minlen || lcnt(*it) > maxlen) continue;
-        if(!apos && strchr(it->w, '\'')) continue;
-        pwords.push_back(it);
+        const worddata *it = d.getword(i);
+        if(lcnt(*it) < cfg.minlen || lcnt(*it) > cfg.maxlen) continue;
+        if(!cfg.apos && strchr(it->w, '\'')) continue;
+        if(!fi(it)) continue;
+        f.c.push_back(it);
     }
+    f.st = f.c.begin();
+    f.en = f.c.end();
+    st.words.clear();
+    if(!st.cfg.rs.empty()) st.words.push_back(st.cfg.rs.c_str());
+}
 
-    wordholder ww(aw);
+bool words_to_string(const vector<const char*> words, std::string &resultline) {
+    resultline.clear();
 
-    if(lcnt(ww.value()) == 0) return 0;
-
-    vector<worddata *> stack;
-    stack.reserve(lcnt(ww.value()));
-
-    wordholder reqd(rw);
-    if(!rw.empty())
+    for(vector<const char *>::const_iterator it = words.begin(); it != words.end(); it++)
     {
-        ww.value() = ww.value() - reqd.value();
-        stack.push_back(reqd.w);
+        if(!resultline.empty()) resultline += ' ';
+        resultline += *it;
+    }
+    return true;
+}
+
+bool step(ana_st &st, string &resultline) {
+    resultline = string();
+
+    if(st.cfg.total_searches == st.cfg.max_searches) {
+        ostringstream o;
+        o << "# Reached maximum of " << st.cfg.total_searches << " searches in " << setprecision(2) << (cputime() - st.t0) << "s";
+        resultline = o.str();
+        return false;
     }
 
-    vector< vector<worddata *> > st;
-    st.resize(lcnt(ww.value()));
+    st.cfg.total_searches ++;
 
-    recurse(o, ww.value(), pwords.begin(), pwords.end(), stack, lengths.begin(), lengths.end(), st.begin(), st.end());
+    if(st.cfg.total_matches == st.cfg.max_matches) {
+        ostringstream o;
+        o << "# Reached maximum of " << st.cfg.total_matches << " matches in " << setprecision(2) << (cputime() - st.t0) << "s";
+        resultline = o.str();
+        return false;
+    }
 
-    o << "# " << total_matches << " matches in " << setprecision(2) << (cputime() - t0) << "s\n";
+    while(!st.fr.empty()) {
+        ana_frame &f = st.fr.back();
 
+        if(!f.l) {
+            st.cfg.total_matches ++;
+            words_to_string(st.words, resultline);
+            st.words.pop_back();
+            st.fr.pop_back();
+            return true;
+        }
+
+        if(f.lst != f.len) {
+            size_t reqlen = *f.lst;
+            while(f.st != f.en && lcnt(**f.st) != reqlen) f.st ++;
+        }
+
+        if(f.st == f.en)
+        {
+            st.fr.pop_back();
+            st.words.pop_back();
+            continue;
+        }
+
+        st.fr.push_back(ana_frame());
+        st.words.push_back((*f.st)->w);
+
+        ana_frame &nf = st.fr.back(); // guaranteed not to move
+        nf.l = f.l - **f.st;
+        nf.c.clear();
+        if(f.lst != f.len) {
+            copy_if(f.c.begin(), f.en, back_inserter(nf.c), filterer(nf.l));
+            nf.lst = f.lst + 1;
+            nf.len = f.len;
+        } else {
+            copy_if(f.st, f.en, back_inserter(nf.c), filterer(nf.l));
+            nf.lst = nf.len = f.len;
+        }
+        nf.st = nf.c.begin();
+        nf.en = nf.c.end();
+        
+        f.st++;
+    }
+
+    ostringstream o;
+    o << "# " << st.cfg.total_matches << " matches ("
+        << st.cfg.total_searches << " searches) in "
+        << setprecision(2) << (cputime() - st.t0) << "s";
+    resultline = o.str();
+    return false;
+}
+
+size_t maxsearch = 10000;
+int run(dict &d, ostream &o, bool apos, size_t minlen, size_t maxlen, size_t maxcount, vector<size_t> &lengths, string &aw, string &rw) {
+    ana_st st;
+    ana_cfg cfg(apos, minlen, maxlen, maxcount, maxsearch, lengths, aw, rw);
+    cfg.max_searches = ~(size_t)0;
+    setup(st, cfg, d);
+    while(1) {
+        std::string line;
+        bool res = step(st, line);
+        o << line << endl;
+        if(!res) break;
+    }
     return 0;
 }
+
+
 
 void serve(istream &i, ostream &o, dict &d, bool def_apos, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
     string an;
