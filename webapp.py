@@ -50,7 +50,7 @@ def anagram_app(environ, start_response):
         pi = ''
 
     if plain:
-        headers = [('Content-type', 'text/plain')] # HTTP Headers
+        headers = [('Content-type', 'application/octet-stream')] # HTTP Headers
     else:
         headers = [('Content-type', 'text/html')] # HTTP Headers
     start_response(status, headers)
