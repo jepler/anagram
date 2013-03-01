@@ -305,19 +305,21 @@ double cputime()
 
 struct ana_cfg {
     ana_cfg()
-    : apos(0), minlen(3), maxlen(10),
+    : apos(0), just_candidates(0), minlen(3), maxlen(10),
             total_matches(0), max_matches(1000), total_searches(0),
             max_searches(1000000) {}
 
-    ana_cfg(bool apos, size_t minlen, size_t maxlen, size_t max_matches,
+    ana_cfg(bool apos, bool just_candidates, size_t minlen, size_t maxlen,
+            size_t max_matches,
             size_t max_searches, const vector<size_t>& lengths,
             const string &ws, const string &rs)
-    : apos(apos), minlen(minlen), maxlen(maxlen),
+    : apos(apos), just_candidates(just_candidates), minlen(minlen),
+            maxlen(maxlen),
             total_matches(0), max_matches(max_matches), total_searches(0),
             max_searches(max_searches), lengths(lengths), rs(rs), ww(wordholder(ws).value() - wordholder(rs).value()) {
     }
 
-    bool apos;
+    bool apos, just_candidates;
     size_t minlen, maxlen;
     size_t total_matches, max_matches, total_searches, max_searches;
     vector<size_t> lengths;
@@ -418,6 +420,13 @@ bool step(ana_st &st, string &resultline) {
             continue;
         }
 
+        if(st.cfg.just_candidates) {
+            st.cfg.total_matches ++;
+            resultline = std::string((*f.st)->w);
+            f.st++;
+            return true;
+        }
+
         st.fr.push_back(ana_frame());
         st.words.push_back((*f.st)->w);
 
@@ -460,16 +469,18 @@ int run(dict &d, ostream &o, ana_cfg &cfg) {
 
 
 size_t maxsearch = 1000000;
-int run(dict &d, ostream &o, bool apos, size_t minlen, size_t maxlen, size_t maxcount, vector<size_t> &lengths, string &aw, string &rw) {
-    ana_cfg cfg(apos, minlen, maxlen, maxcount, maxsearch, lengths, aw, rw);
+int run(dict &d, ostream &o, bool apos, bool just_candidates, size_t minlen, size_t maxlen, size_t maxcount, vector<size_t> &lengths, string &aw, string &rw) {
+    ana_cfg cfg(apos, just_candidates, minlen, maxlen, maxcount, maxsearch,
+        lengths, aw, rw);
     return run(d, o, cfg);
 }
 
-void parse(const std::string &s, ana_cfg &st, bool def_apos, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
+void parse(const std::string &s, ana_cfg &st, bool def_apos, bool def_just_candidates, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
     string an;
     string reqd;
     
     bool apos = def_apos;
+    bool just_candidates = def_just_candidates;
     size_t minlen = def_minlen;
     size_t maxlen = def_maxlen;
     size_t maxcount = def_maxcount;
@@ -519,6 +530,7 @@ void parse(const std::string &s, ana_cfg &st, bool def_apos, size_t def_minlen, 
                 break;
             case '?':
                 (void) i.get();
+                just_candidates = !just_candidates;
                 break;
             default: 
                 {
@@ -535,15 +547,15 @@ void parse(const std::string &s, ana_cfg &st, bool def_apos, size_t def_minlen, 
         }
     }
     st.~ana_cfg();
-    new(&st) ana_cfg(apos, minlen, maxlen, maxcount, maxsearch,
+    new(&st) ana_cfg(apos, just_candidates, minlen, maxlen, maxcount, maxsearch,
                     lengths, aw, rw);
 }
 
-void serve(istream &i, ostream &o, dict &d, bool def_apos, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
+void serve(istream &i, ostream &o, dict &d, bool def_apos, bool def_just_candidates, size_t def_minlen, size_t def_maxlen, size_t def_maxcount) {
     string s;
     while((getline(i, s))) {
         ana_cfg cfg;
-        parse(s, cfg, def_apos, def_minlen, def_maxlen, def_maxcount);
+        parse(s, cfg, def_apos, def_just_candidates, def_minlen, def_maxlen, def_maxcount);
         run(d, o, cfg);
         o.put('\n'); o.flush();
     }
@@ -582,18 +594,20 @@ search_object *search_new(PyTypeObject *type, PyObject *args, PyObject *kw)
 
 PyObject *py_run(PyObject *self, PyObject *args, PyObject *keywds) {
     dict_object *d = (dict_object*)self;
-    int apos = false;
+    int apos = false, just_candidates = false;
     Py_ssize_t minlen = 3;
     Py_ssize_t maxlen = 11;
     Py_ssize_t maxcount = 1000;
 
     char *terms;
     Py_ssize_t terms_sz;
-    static const char * kwlist[]
-	= {"terms", "apos", "minlen", "maxlen", "maxcount", NULL};
-    if(!PyArg_ParseTupleAndKeywords(args, keywds, "s#|innn:ana.dict.run",
+    static const char * kwlist[] = {
+        "terms", "apos", "just_candidates", "minlen", "maxlen", "maxcount",
+        NULL};
+    if(!PyArg_ParseTupleAndKeywords(args, keywds, "s#|iinnn:ana.dict.run",
 	    const_cast<char**>(kwlist),
-	    &terms, &terms_sz, &apos, &minlen, &maxlen, &maxcount))
+	    &terms, &terms_sz, &apos, &just_candidates,
+            &minlen, &maxlen, &maxcount))
 	return NULL;
     
     string query(terms, terms+terms_sz);
@@ -604,7 +618,7 @@ PyObject *py_run(PyObject *self, PyObject *args, PyObject *keywds) {
 
     ana_cfg cfg;
     o->st = new ana_st;
-    parse(query, cfg, apos, minlen, maxlen, maxcount);
+    parse(query, cfg, apos, just_candidates, minlen, maxlen, maxcount);
     setup(*o->st, cfg, d->d);
 
     return reinterpret_cast<PyObject*>(o);
@@ -708,15 +722,16 @@ int main(int argc, char **argv)
     const char *dictpath=0, *defdict="/usr/share/dict/words", *bindict=0;
     int opt;
     size_t minlen=3, maxlen=11, maxcount=1000;
-    bool apos=false, server=false;
+    bool apos=false, just_candidates=false, server=false;
     vector<size_t> lengths;
     string aw;
 
-    while((opt = getopt(argc, argv, "-aD:d:M:m:l:s")) != -1)
+    while((opt = getopt(argc, argv, "-acD:d:M:m:l:s")) != -1)
     {
         switch(opt)
         {
             case 'a': apos = !apos; break;
+            case 'c': just_candidates = !just_candidates; break;
             case 'L': maxcount = atoi(optarg); break;
             case 'D': bindict = optarg; break;
             case 'd': dictpath = optarg; break;
@@ -743,7 +758,7 @@ int main(int argc, char **argv)
     }
 
     if(server) {
-        serve(cin, cout, d, apos, minlen, maxlen, maxcount);
+        serve(cin, cout, d, apos, just_candidates, minlen, maxlen, maxcount);
         return 0;
     } else {
         string rw;
@@ -752,7 +767,7 @@ int main(int argc, char **argv)
             if(rw.empty()) rw = i;
             else rw = rw + " " + argv[i];
         }
-        return run(d, cout, apos, minlen, maxlen, maxcount, lengths, aw, rw);
+        return run(d, cout, apos, just_candidates, minlen, maxlen, maxcount, lengths, aw, rw);
     }
 }
 #endif

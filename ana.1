@@ -12,7 +12,8 @@ makes it useful to invoke from long-lived programs.
 .HP
 .B ana \fR[\fB-d \fItext-dictionary\fR|\fB-D \fIbinary-dictionary\fR]
 [\fB-l \fIlen1,...\fR] [\fB-m \fIminlen\fR]
-[\fB-M \fImaxlen\fR] [\fB-a\fR] \fIterms...\fR \fR[-- \fIrequired-terms...\fR]
+[\fB-M \fImaxlen\fR] [\fB-a\fR] [\fB-c\fR]
+\fIterms...\fR \fR[-- \fIrequired-terms...\fR]
 .SS Make a binary dictionary from a text dictionary
 .HP
 .B ana -d\fItext-dictionary\fB -D\fIbinary-dictionary
@@ -43,6 +44,12 @@ exceeds these values, they will be reduced or increased accordingly. (this relat
 Toggle "accept apostrophes" mode (default: off).  If this mode is off, words
 from the dictionary with apostrophes will never be chosen.  Otherwise, they
 may be chosen.
+.TP
+-a
+Toggle "just candidates" mode (default: off).  If this mode is off, whole
+phrases are printed.  If this mode is on, all words that can be spelled from
+the input terms minus the required terms (and which match the first length
+restriction, if specified) are printed.
 .TP
 terms...
 Alphabetic characters from these terms are added to the pool of letters to be
