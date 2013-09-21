@@ -506,6 +506,8 @@ void parse(const std::string &s, ana_cfg &st, bool def_apos, bool def_just_candi
                     size_t len;
                     i >> len;
                     lengths.push_back(len);
+                    minlen = std::min(minlen, len);
+                    maxlen = std::max(maxlen, len);
                     break;
                 }
             case '+': case '=':
