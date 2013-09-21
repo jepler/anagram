@@ -26,6 +26,9 @@ then use it with
  1.    Copy anamodule.so, the binary dictionary, anagram.js and webapp.py to
  your webspace (or put anamodule.so on your PYTHONPATH)
 
+ 1.    Optionally, edit webapp.py to use your own copy of jquery instead
+ of the one from the code.jquery.com cdn
+
  1.    Set up .htaccess, e.g.,
 
         AddHandler fcgid-script .fcgi
