@@ -56,32 +56,48 @@ def anagram_app(environ, start_response):
     start_response(status, headers)
 
     if not plain:
-        yield '<!DOCTYPE html>'
-        yield '<html><meta charset="UTF-8"><head><title>Surly Anagram Server</title></head>'
-
-        yield '<body>'
-        yield '<div style="float:right; font-size: 71%;">'
-        yield '<p>Cheatsheet:</p>'
-        yield '<dl>'
-        yield '<dt>letters... <dd> Letters available to anagram\n'
-        yield '<dt>=word <dd> word must be in result\n'
-        yield '<dt>&gt;n <dd> words must contain at least n letters\n'
-        yield '<dt>&lt;n <dd> words must contain at most n letters\n'
-        yield '<dt>\' <dd> words with apostrophes are considered\n'
-        yield '<dt>n <dd> choose a word with exactly n letters\n'
-        yield '<dt>-n <dd> display at most n results (limit 1000)\n'
-        yield '<dt>? <dd> display candidate words, not whole phrases\n'
-        yield '</dl>'
-        yield '<p>In ajax mode, hit enter or click "anagram" to do get full results</p>'
-        yield '<p>Source (web app and unix commandline program) on'
-        yield ' <a href="https://github.com/jepler/anagram">github</a></p>'
-        yield '</div>'
+        yield '''<!DOCTYPE html>
+<html>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<head>
+<title>Surly Anagram Server</title>
+<style>
+@media screen and (min-width: 680px) { #cheatsheet { float: right; } }
+#cheatsheet { font-size: 71%%; cursor: pointer; }
+#cheatsheet table, #cheatsheet caption { background: #d9d9d9; color: #000; }
+#cheatsheet.hidden { cursor: zoom-in; }
+#cheatsheet caption:after { content: "\\a0«" }
+#cheatsheet.hidden caption:after { content: "\\a0»" }
+#cheatsheet.hidden tbody { display: none; }
+//#cheatsheet { float: right; }
+#cheatsheet th { text-align: left }
+#cheatsheet caption { font-weight: bold; }
+</style>
+</head>
+<body>
+<div id="cheatsheet">
+<table>
+<caption>Cheatsheet</caption>
+<tr><th>letters... <td> Letters available to anagram
+<tr><th>=word <td> word must be in result
+<tr><th>&gt;n <td> words must contain at least n letters
+<tr><th>&lt;n <td> words must contain at most n letters
+<tr><th>' <td> words with apostrophes are considered
+<tr><th>n <td> choose a word with exactly n letters
+<tr><th>-n <td> display at most n results (limit 1000)
+<tr><th>? <td> display candidate words, not whole phrases
+<tr><td colspan=2>In ajax mode, hit enter or click "anagram" to do get full results
+<tr><td colspan=2>Source (web app and unix commandline program) on
+ <a href="https://github.com/jepler/anagram">github</a>
+</table>
+</div>
             
-        yield '<form id="f"><input type="text" id="query" name="q" value="%s">' % cgi.escape(pi, True)
-        yield '<input type="submit" value="anagram">'
-        yield '<script>document.getElementById("query").focus()</script>'
-        yield '</form>'
-        yield '<pre id="results">'
+<form id="f"><input type="text" id="query" name="q" value="%s">
+<input type="submit" value="anagram">
+<script>document.getElementById("query").focus()</script>
+</form>
+<pre id="results">''' % cgi.escape(pi, True)
 
     if pi:
 	if plain: e = lambda x: x
@@ -92,11 +108,14 @@ def anagram_app(environ, start_response):
             yield e(row) + '\n'
 
     if not plain:
-        yield '</pre>'
-        yield '<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>'
-        yield '<script src="anagram.js"></script>'
-
-        yield '</body></html>'
+        yield '''
+</pre>
+<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+<script src="anagram.js"></script>
+<script>
+$("#cheatsheet").click(function() { $(this).toggleClass("hidden"); })
+</script>
+</body></html>'''
 
 from flup.server.fcgi import WSGIServer
 WSGIServer(anagram_app).run()
