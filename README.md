@@ -38,4 +38,4 @@ then use it with
         Allow from all
 
 # Live web version
-http://unpy.net/anagram/
+http://ana.unpythonic.net
