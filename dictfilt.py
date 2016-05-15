@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 # Remove uppercase words from dictionary when a lowercase form is
 # present
 #
