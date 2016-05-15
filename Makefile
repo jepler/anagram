@@ -33,8 +33,18 @@ CXXFLAGS := -g $(call cc-option,-std=c++11,-std=c++0x) -Wall
 
 all: ana anamodule.so
 
+ana.js:  $(wildcard *.cc) $(wildcard *.h) Makefile words
+	em++ -Os --bind -std=c++11 -s TOTAL_MEMORY=33554432  --embed-file words -DANA_AS_JS run.cc -o ana.js
+
+words:
+	grep '^[a-z]*$$' /usr/share/dict/words > $@
+
 ana: $(wildcard *.cc) $(wildcard *.h) Makefile
 	$(CXX) $(CXXFLAGS) -fwhole-program -o $@ $(filter %.cc, $^)
 anamodule.so: $(wildcard *.cc) $(wildcard *.h) Makefile
 	$(CXX) $(CXXFLAGS) $(CXXFLAGS_PYTHON) -o $@ $(filter %.cc, $^) \
 		$(LFLAGS_PYTHON)
+
+publish: ana.js ana.html ana.js.mem
+	git branch -D gh-pages || true
+	./import ana.js ana.js.mem index.html=ana.html | git fast-import --date-format=now

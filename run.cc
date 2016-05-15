@@ -718,6 +718,31 @@ initana(void) {
     PyModule_AddObject(m, "anadict", (PyObject *)&dict_type);
 }
 
+#elif defined(ANA_AS_JS)
+#include <emscripten/bind.h>
+
+dict d;
+
+std::string js_run(std::string s) {
+    std::string result;
+    ana_cfg cfg;
+    ana_st st;
+    parse(s, cfg, false, false, 3, 11, 1000);
+    setup(st, cfg, d);
+    while(1) {
+        std::string line;
+        bool res = step(st, line);
+        result += line; result += "\n";
+        if(!res) break;
+    }
+    return result;
+}
+
+EMSCRIPTEN_BINDINGS(ana) {
+    emscripten::function("ana", &js_run);
+    d.readdict("words");
+}
+
 #else
 int main(int argc, char **argv)
 {
