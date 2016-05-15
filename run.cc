@@ -563,7 +563,7 @@ void serve(istream &i, ostream &o, dict &d, bool def_apos, bool def_just_candida
     }
 }
 
-#ifdef ANA_AS_PYMODULE
+#if defined(ANA_AS_PYMODULE)
 struct dict_object {
     PyObject_HEAD
     dict d;
