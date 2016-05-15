@@ -766,7 +766,7 @@ int main(int argc, char **argv)
         string rw;
         for(int i=optind; i<argc; i++)
         {
-            if(rw.empty()) rw = i;
+            if(rw.empty()) rw = argv[i];
             else rw = rw + " " + argv[i];
         }
         return run(d, cout, apos, just_candidates, minlen, maxlen, maxcount, lengths, aw, rw);
