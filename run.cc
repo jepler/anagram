@@ -570,10 +570,9 @@ struct dict_object {
 };
 
 static PyTypeObject dict_type = {
-    PyObject_HEAD_INIT(NULL)
-    0,
-    "ana.anadict",
-    sizeof(dict_object),
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "ana.anadict",
+    .tp_basicsize = sizeof(dict_object),
 };
 
 struct search_object {
@@ -583,10 +582,9 @@ struct search_object {
 };
 
 static PyTypeObject search_type = {
-    PyObject_HEAD_INIT(NULL)
-    0,
-    "ana.results",
-    sizeof(search_object),
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "ana.results",
+    .tp_basicsize = sizeof(search_object),
 };
 
 search_object *search_new(PyTypeObject *type, PyObject *args, PyObject *kw)
@@ -641,7 +639,7 @@ dict_new(PyTypeObject *type, PyObject *args, PyObject *kw) {
 static void
 dict_dealloc(dict_object *self) {
     self->d.~dict();
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static PyObject *
@@ -686,26 +684,34 @@ search_iternext(search_object *self) {
     bool res = step(*self->st, result);
     if(!res) { delete self->st; self->st = NULL; }
     Py_END_ALLOW_THREADS
-    return PyString_FromStringAndSize(result.data(), result.size());
+    return PyUnicode_FromStringAndSize(result.data(), result.size());
 }
 
 static void
 search_dealloc(search_object *self) {
     Py_XDECREF(self->d);
     delete self->st;
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+static struct PyModuleDef moduledef = {
+    PyModuleDef_HEAD_INIT,
+    "ana",
+    "Quickly compute anagrams of strings",
+    -1,
+    methods
+};
+
 PyMODINIT_FUNC
-initana(void) {
+PyInit_ana(void) {
     PyObject *m;
-    m = Py_InitModule("ana", methods);
+    m = PyModule_Create(&moduledef);
 
     dict_type.tp_flags = Py_TPFLAGS_DEFAULT;
     dict_type.tp_new = dict_new;
     dict_type.tp_dealloc = reinterpret_cast<destructor>(dict_dealloc);
     dict_type.tp_methods = dict_methods;
-    if(PyType_Ready(&dict_type) < 0) return;
+    if(PyType_Ready(&dict_type) < 0) return NULL;
 
     search_type.tp_flags = Py_TPFLAGS_DEFAULT;
     search_type.tp_new = reinterpret_cast<newfunc>(search_new);
@@ -713,9 +719,11 @@ initana(void) {
     search_type.tp_iter = reinterpret_cast<getiterfunc>(search_iter);
     search_type.tp_iternext =
         reinterpret_cast<iternextfunc>(search_iternext);
-    if(PyType_Ready(&search_type) < 0) return;
+    if(PyType_Ready(&search_type) < 0) return NULL;
 
     PyModule_AddObject(m, "anadict", (PyObject *)&dict_type);
+
+    return m;
 }
 
 #elif defined(ANA_AS_JS)

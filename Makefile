@@ -31,7 +31,11 @@ LFLAGS_PYTHON := \
 CXX := g++
 CXXFLAGS := -g $(call cc-option,-std=c++11,-std=c++0x) -Wall
 
-all: ana anamodule.so
+.PHONY: all
+all: ana python dict.bin
+
+.PHONY: python
+python: ana.so
 
 ana.js:  $(wildcard *.cc) $(wildcard *.h) Makefile words
 	em++ -Os --bind -std=c++11 -s TOTAL_MEMORY=33554432  --preload-file words -DANA_AS_JS run.cc -o ana.js
@@ -39,9 +43,12 @@ ana.js:  $(wildcard *.cc) $(wildcard *.h) Makefile words
 words:
 	grep '^[a-z]*$$' /usr/share/dict/words > $@
 
+dict.bin: words ana
+	./ana -D $@ -d $<
+
 ana: $(wildcard *.cc) $(wildcard *.h) Makefile
 	$(CXX) $(CXXFLAGS) -fwhole-program -o $@ $(filter %.cc, $^)
-anamodule.so: $(wildcard *.cc) $(wildcard *.h) Makefile
+ana.so: $(wildcard *.cc) $(wildcard *.h) Makefile
 	$(CXX) $(CXXFLAGS) $(CXXFLAGS_PYTHON) -o $@ $(filter %.cc, $^) \
 		$(LFLAGS_PYTHON)
 
