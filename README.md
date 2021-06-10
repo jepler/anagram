@@ -18,7 +18,18 @@ then use it with
 
     ./ana -D dict.bin terms...
 
+# Python use
+```
+$ python3
+>>> import ana
+>>> d = ana.from_binary("dict.bin")
+>>> for row in d.run("hello world"):
+...    print(row)
+```
+
 # Web app installation instructions
+_Most likely this is heavily bitrotted, the cgi script has not been updated for python3._
+
  1.    build a binary dictionary:
 
         ./ana -D dict.bin -d /usr/share/dict/words
