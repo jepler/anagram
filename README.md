@@ -27,26 +27,23 @@ $ python3
 ...    print(row)
 ```
 
-# Web app installation instructions
-_Most likely this is heavily bitrotted, the cgi script has not been updated for python3._
+# Web Browser Version (WASM/js)
 
- 1.    build a binary dictionary:
+ 1. Compile with emscripten (tested with the version in debian bullseye):
 
-        ./ana -D dict.bin -d /usr/share/dict/words
+        make ana.js
 
- 1.    Copy anamodule.so, the binary dictionary, anagram.js and webapp.py to
- your webspace (or put anamodule.so on your PYTHONPATH)
+ 1. Test it to your satisfaction using a local html server:
 
- 1.    Optionally, edit webapp.py to use your own copy of jquery instead
- of the one from the code.jquery.com cdn
+        python3 http.server &
+ 
+ 1. Commit it:
 
- 1.    Set up .htaccess, e.g.,
+        make publish
 
-        AddHandler fcgid-script .fcgi
-        Options +ExecCgi
-        DirectoryIndex index.fcgi
-        Order allow,deny
-        Allow from all
+ 1. Push it to github:
+
+        git push origin gh-pages
 
 # Live web version
-http://ana.unpythonic.net
+https://www.unpythonic.net/anagram/
