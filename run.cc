@@ -258,8 +258,10 @@ struct dict {
 
 void usage(const char *progname)
 {
-    fprintf(stderr, "Usage: %s [-d dictionary] [-l len1,...] [-m minlen]\n\t"
-                            "[-M maxlen] [-a] terms... -- required...\n", progname);
+    fprintf(stderr, "Usage: %s [-d text-dictionary|-D bin-dictionary]\n\t"
+                            "[-l len1,...] [-m minlen] [-M maxlen]\n\t"
+                            "[-a] [-c] [-s] terms... -- required...\n",
+                            progname);
     exit(1);
 }
 
