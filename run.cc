@@ -784,6 +784,7 @@ int main(int argc, char **argv)
         d.readdict(dictpath);
         d.serialize(bindict);
         cout << "# Read and serialized " << d.nwords() << " candidate words in " << setprecision(2) << cputime() << "s\n";
+        return 0;
     } else if(bindict) {
         d.deserialize(bindict);
         cout << "# Deserialized " << d.nwords() << " candidate words in " << setprecision(2) << cputime() << "s\n";
