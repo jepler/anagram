@@ -50,7 +50,7 @@ ana: $(wildcard *.cc) | $(wildcard *.h) Makefile
 ana.so: $(wildcard *.cc) | $(wildcard *.h) Makefile
 	$(CXX) $(CXXFLAGS) $(CXXFLAGS_PYTHON) -o $@ $^ $(LFLAGS_PYTHON)
 
-publish: ana.js ana.html ana.js.mem ana.data
+publish: ana.js ana.html ana.wasm ana.data ana.js.mem ana.data
 	git branch -D gh-pages || true
 	./import $(filter-out ana.html,$^) index.html=ana.html | git fast-import --date-format=now
 
