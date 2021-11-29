@@ -28,6 +28,7 @@ LFLAGS_PYTHON := \
 
 CXX := g++
 CXXFLAGS := -g -std=c++11 -Wall
+EXTRAFLAGS ?=
 
 .PHONY: all
 all: ana python dict.bin
@@ -44,11 +45,10 @@ words:
 dict.bin: words ana
 	./ana -D $@ -d $<
 
-ana: $(wildcard *.cc) $(wildcard *.h) Makefile
-	$(CXX) $(CXXFLAGS) -fwhole-program -o $@ $(filter %.cc, $^)
-ana.so: $(wildcard *.cc) $(wildcard *.h) Makefile
-	$(CXX) $(CXXFLAGS) $(CXXFLAGS_PYTHON) -o $@ $(filter %.cc, $^) \
-		$(LFLAGS_PYTHON)
+ana: $(wildcard *.cc) | $(wildcard *.h) Makefile
+	$(CXX) $(CXXFLAGS) $(EXTRAFLAGS) -flto -o $@ $^
+ana.so: $(wildcard *.cc) | $(wildcard *.h) Makefile
+	$(CXX) $(CXXFLAGS) $(CXXFLAGS_PYTHON) -o $@ $^ $(LFLAGS_PYTHON)
 
 publish: ana.js ana.html ana.js.mem ana.data
 	git branch -D gh-pages || true
