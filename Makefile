@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-cc-option = $(shell if $(CC) $(CFLAGS) $(1) -S -o /dev/null -xc /dev/null \
-	     > /dev/null 2>&1; then echo "$(1)"; else echo "$(2)"; fi ;)
 pyconfig = $(shell python3 -c \
 		'from distutils import sysconfig; print(sysconfig.$(1))')
 
@@ -29,7 +27,7 @@ LFLAGS_PYTHON := \
 	$(call pyconfig, get_config_var("LIBS"))
 
 CXX := g++
-CXXFLAGS := -g $(call cc-option,-std=c++11,-std=c++0x) -Wall
+CXXFLAGS := -g -std=c++11 -Wall
 
 .PHONY: all
 all: ana python dict.bin
