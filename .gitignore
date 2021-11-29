@@ -1,7 +1,9 @@
 /ana
+/ana.data
 /ana.js
 /ana.js.mem
 /ana.so
-/run.o
+/ana.wasm
 /dict.bin
+/run.o
 /words
