@@ -53,3 +53,7 @@ ana.so: $(wildcard *.cc) $(wildcard *.h) Makefile
 publish: ana.js ana.html ana.js.mem ana.data
 	git branch -D gh-pages || true
 	./import $(filter-out ana.html,$^) index.html=ana.html | git fast-import --date-format=now
+
+.PHONY: clean
+clean:
+	rm -f ana ana.so dict.bin words ana.js
