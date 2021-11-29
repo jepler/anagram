@@ -40,7 +40,7 @@ ana.js:  $(wildcard *.cc) $(wildcard *.h) Makefile words
 	em++ -Os --bind -std=c++11 -s TOTAL_MEMORY=33554432  --preload-file words -DANA_AS_JS run.cc -o ana.js
 
 words:
-	grep '^[a-z]*$$' /usr/share/dict/words > $@
+	LANG=C.UTF-8 grep '^[a-z]*$$' /usr/share/dict/words > $@
 
 dict.bin: words ana
 	./ana -D $@ -d $<
