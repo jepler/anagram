@@ -16,7 +16,7 @@
 
 cc-option = $(shell if $(CC) $(CFLAGS) $(1) -S -o /dev/null -xc /dev/null \
 	     > /dev/null 2>&1; then echo "$(1)"; else echo "$(2)"; fi ;)
-pyconfig = $(shell python -c \
+pyconfig = $(shell python3 -c \
 		'from distutils import sysconfig; print(sysconfig.$(1))')
 
 CXXFLAGS_PYTHON := -DANA_AS_PYMODULE \
