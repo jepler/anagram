@@ -29,7 +29,7 @@ $ python3
 
 # Web Browser Version (WASM/js)
 
- 1. Compile with emscripten (tested with the version in debian bullseye):
+ 1. Compile with emscripten (tested with the version in debian bookworm):
 
         make ana.js
 
