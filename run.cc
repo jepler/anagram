@@ -738,6 +738,10 @@ std::string js_run(std::string s) {
     ana_cfg cfg;
     ana_st st;
     parse(s, cfg, false, false, 3, 11, 1000);
+    if (!d.nwords()) {
+        std::cerr << "# reading words\n";
+        d.readdict("words");
+    }
     setup(st, cfg, d);
     while(1) {
         std::string line;
@@ -750,7 +754,6 @@ std::string js_run(std::string s) {
 
 EMSCRIPTEN_BINDINGS(ana) {
     emscripten::function("ana", &js_run);
-    d.readdict("words");
 }
 
 #else
