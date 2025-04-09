@@ -46,7 +46,7 @@ Module['onRuntimeInitialized'] = function() {
     update = function() {
         var search = document.getElementById("query").value;
         document.location.hash = '#' + search;
-        if(search == last) return false;;
+        if(search == last) return false;
         document.getElementById("results").innerText=Module.ana(search);
         last = search;
         return false;
