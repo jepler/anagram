@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <endian.h>
 #include <fstream>
 #include <functional>
 #include <inttypes.h>
@@ -32,6 +33,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <stdint.h>
+#include <sys/time.h>
 #include <string>
 #include <unistd.h>
 #include <vector>
@@ -141,6 +143,7 @@ inline worddata operator-(const worddata &a, const worddata &b)
 }
 
 
+#if !ANA_JS
 template<class T>
 void bwrite(ostream &o, const T &t) {
     o.write(reinterpret_cast<const char *>(&t), sizeof(t));
@@ -178,6 +181,7 @@ inline bool ascii(const string &s)
         if(!isascii(s[i])) return false;
     return true;
 }
+#endif
 
 struct dict {
     struct byinvwordlen {
@@ -189,9 +193,6 @@ struct dict {
         const dict &d;
     };
 
-    static const uint32_t signature = 0x414e4144;
-    static const uint32_t signature2 = sizeof(uint64_t);
-    static const uint32_t signature_rev = 0x44414e41;
     vector<uint32_t> woff;
     vector<char> wdata;
 
@@ -232,6 +233,10 @@ struct dict {
         stable_sort(woff.begin(), woff.end(), byinvwordlen(*this));
     }
 
+#if !ANA_JS
+    static const uint32_t signature = 0x414e4144;
+    static const uint32_t signature2 = sizeof(uint64_t);
+    static const uint32_t signature_rev = 0x44414e41;
     void serialize(const char *ofn) const {
         ofstream o(ofn, ios::binary);
         uint32_t s = signature;
@@ -273,6 +278,7 @@ struct dict {
         wdata.resize(sz);
         bread(i, &*(wdata.begin()), sz);
     }
+#endif
 };
 
 void usage(const char *progname)
@@ -317,10 +323,16 @@ vector<size_t> parse_lengths(const char *l)
 #include <sys/resource.h>
 double cputime()
 {
+#if defined(ANA_AS_JS)
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return tv.tv_sec + tv.tv_usec * 1e-6;
+#else
     struct rusage u;
     getrusage(RUSAGE_SELF, &u);
     return (u.ru_utime.tv_sec + u.ru_utime.tv_usec * 1e-6)
         + (u.ru_stime.tv_sec + u.ru_stime.tv_usec * 1e-6);
+#endif
 }
 
 
@@ -489,7 +501,7 @@ int run(dict &d, ostream &o, ana_cfg &cfg) {
 }
 
 
-size_t maxsearch = 1000000;
+size_t maxsearch = 10000000;
 int run(dict &d, ostream &o, bool apos, bool just_candidates, size_t minlen, size_t maxlen, size_t maxcount, vector<size_t> &lengths, string &aw, string &rw) {
     ana_cfg cfg(apos, just_candidates, minlen, maxlen, maxcount, maxsearch,
         lengths, aw, rw);
@@ -756,7 +768,7 @@ std::string js_run(std::string s) {
     std::string result;
     ana_cfg cfg;
     ana_st st;
-    parse(s, cfg, false, false, 3, 11, 1000);
+    parse(s, cfg, false, false, 3, 11, 10000);
     if (!d.nwords()) {
         std::cerr << "# reading words\n";
         d.readdict("words");

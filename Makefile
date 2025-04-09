@@ -33,6 +33,9 @@ EXTRAFLAGS ?=
 .PHONY: all
 all: ana python dict.bin
 
+.PHONY: web
+web: ana.js
+
 .PHONY: python
 python: ana.so
 
