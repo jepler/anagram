@@ -140,6 +140,7 @@ inline worddata operator-(const worddata &a, const worddata &b)
     return r;
 }
 
+
 template<class T>
 void bwrite(ostream &o, const T &t) {
     o.write(reinterpret_cast<const char *>(&t), sizeof(t));
@@ -150,6 +151,11 @@ void bwrite(ostream &o, const T *t, size_t n) {
     o.write(reinterpret_cast<const char *>(t), sizeof(T)*n);
 }
 
+void bwrite_be32(ostream &o, const uint32_t t) {
+    uint32_t t_be32 = htobe32(t);
+    bwrite(o, t_be32);
+}
+
 template<class T>
 void bread(istream &o, T &t) {
     o.read(reinterpret_cast<char *>(&t), sizeof(t));
@@ -158,6 +164,12 @@ void bread(istream &o, T &t) {
 template<class T>
 void bread(istream &o, T *t, size_t n) {
     o.read(reinterpret_cast<char *>(t), sizeof(T)*n);
+}
+
+void bread_be32(istream &o, uint32_t &t) {
+    uint32_t t_be32;
+    bread(o, t_be32);
+    t = htobe32(t_be32);
 }
 
 inline bool ascii(const string &s)
@@ -177,10 +189,10 @@ struct dict {
         const dict &d;
     };
 
-    static const int32_t signature = 0x414e4144;
-    static const int32_t signature2 = sizeof(size_t);
-    static const int32_t signature_rev = 0x44414e41;
-    vector<size_t> woff;
+    static const uint32_t signature = 0x414e4144;
+    static const uint32_t signature2 = sizeof(uint64_t);
+    static const uint32_t signature_rev = 0x44414e41;
+    vector<uint32_t> woff;
     vector<char> wdata;
 
     const worddata *getword(size_t i) const {
@@ -222,35 +234,42 @@ struct dict {
 
     void serialize(const char *ofn) const {
         ofstream o(ofn, ios::binary);
-        int32_t s = signature;
-        bwrite(o, s);
+        uint32_t s = signature;
+        bwrite_be32(o, s);
         s = signature2;
-        bwrite(o, s);
-        bwrite(o, woff.size());
+        bwrite_be32(o, s);
+
+        if(woff.size() > INT32_MAX) {
+            throw runtime_error("dictionary too big (woff)");
+        }
+        bwrite_be32(o, woff.size());
         bwrite(o, &woff[0], woff.size());
-        bwrite(o, wdata.size());
+        if(woff.size() > INT32_MAX) {
+            throw runtime_error("dictionary too big (wdata)");
+        }
+        bwrite_be32(o, wdata.size());
         bwrite(o, &wdata[0], wdata.size());
     }
 
     void deserialize(const char *ifn) {
         ifstream i(ifn, ios::binary);
-        int32_t sig;
-        bread(i, sig);
+        uint32_t sig;
+        bread_be32(i, sig);
         if(sig == signature_rev)
-            throw runtime_error("archive is for other-endian machine");
+            throw runtime_error("endianness error");
         else if(sig != signature)
             throw runtime_error("not an anagram dictionary archive");
 
-        bread(i, sig);
+        bread_be32(i, sig);
         if(sig != signature2)
-            throw runtime_error("archive is different-size_t machine");
+            throw runtime_error("count-size error");
 
-        size_t sz;
-        bread(i, sz);
+        uint32_t sz;
+        bread_be32(i, sz);
         woff.resize(sz);
         bread(i, &*(woff.begin()), sz);
 
-        bread(i, sz);
+        bread_be32(i, sz);
         wdata.resize(sz);
         bread(i, &*(wdata.begin()), sz);
     }
