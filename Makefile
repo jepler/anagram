@@ -27,7 +27,7 @@ LFLAGS_PYTHON := \
 	$(call pyconfig, get_config_var("LIBS"))
 
 CXX := g++
-CXXFLAGS := -g -std=c++11 -Wall
+CXXFLAGS := -g -std=c++2b -Wall
 EXTRAFLAGS ?=
 
 .PHONY: all
@@ -40,7 +40,7 @@ web: ana.js
 python: ana.so
 
 ana.js:  $(wildcard *.cc) $(wildcard *.h) Makefile words
-	em++ -flto -O3 -g --bind -std=c++11 -s TOTAL_MEMORY=33554432  --preload-file words -DANA_AS_JS run.cc -o ana.js
+	em++ -flto -O3 -g --bind -std=c++2b -s TOTAL_MEMORY=33554432  --preload-file words -DANA_AS_JS run.cc -o ana.js
 
 words:
 	LANG=C.UTF-8 grep '^[a-z]*$$' /usr/share/dict/words > $@
