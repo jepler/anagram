@@ -56,4 +56,4 @@ publish: ana.js ana.html ana.wasm ana.data ana.js.mem ana.data
 
 .PHONY: clean
 clean:
-	rm -f ana ana.so dict.bin words ana.js
+	rm -f ana ana.so dict.bin words ana.js ana.wasm
