@@ -603,7 +603,7 @@ struct dict_object {
 };
 
 static PyTypeObject dict_type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+    .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "ana.anadict",
     .tp_basicsize = sizeof(dict_object),
 };
@@ -615,7 +615,7 @@ struct search_object {
 };
 
 static PyTypeObject search_type = {
-    PyVarObject_HEAD_INIT(NULL, 0)
+    .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "ana.results",
     .tp_basicsize = sizeof(search_object),
 };
