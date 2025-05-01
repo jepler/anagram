@@ -22,6 +22,7 @@
 #endif
 
 #include <algorithm>
+#include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <endian.h>
@@ -460,10 +461,13 @@ bool step(ana_st &st, string &resultline) {
             return true;
         }
 
+        // guaranteed not to move, because of earlier reserve()!
+        assert(st.fr.size() + 1 < st.fr.capacity());
         st.fr.push_back(ana_frame());
+
         st.words.push_back((*f.st)->w);
 
-        ana_frame &nf = st.fr.back(); // guaranteed not to move
+        ana_frame &nf = st.fr.back();
         nf.l = f.l - **f.st;
         nf.c.clear();
         if(f.lst != f.len) {
