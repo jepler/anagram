@@ -350,7 +350,14 @@ struct ana_cfg {
     : apos(apos), just_candidates(just_candidates), minlen(minlen),
             maxlen(maxlen),
             total_matches(0), max_matches(max_matches), total_searches(0),
-            max_searches(max_searches), lengths(lengths), rs(rs), ww(wordholder(ws).value() - wordholder(rs).value()) {
+            max_searches(max_searches), lengths(lengths), rs(rs), ww() {
+                auto wsv = wordholder(ws).value();
+                auto rsv = wordholder(rs).value();
+                if (candidate(wsv, rsv)) {
+                    ww = wsv - rsv;
+                } else {
+                    this->max_searches = 0;
+                }
     }
 
     bool apos, just_candidates;
