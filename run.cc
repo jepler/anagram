@@ -56,7 +56,7 @@ struct worddata
     uint32_t m;
     unsigned char c[26];
     uint16_t l;
-    char w[1];
+    char w[1]; // note: not declared as flexible member for Reasons
 
 private:
     /* Note: Constructor assumes that storage for word has been
