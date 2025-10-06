@@ -1,3 +1,7 @@
+# Moved to codeberg
+
+This project has moved to codeberg: https://codeberg.org/jepler/anagram
+
 # Build instructions:
 
     make
@@ -46,4 +50,4 @@ $ python3
         git push origin gh-pages
 
 # Live web version
-https://www.unpythonic.net/anagram/
+https://jepler.grebedoc.dev/anagram/
